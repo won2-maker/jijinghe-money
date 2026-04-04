@@ -171,8 +171,11 @@ function buildMonthly(raw) {
       .reduce((s,[,a])=>s+(a[i]||0),0);
     const income기타 = incomeTotal - income급여;
     const income      = { total: incomeTotal, 급여: income급여, 기타: income기타 };
-    const fixed       = Object.values(raw.fixed).reduce((s,a)=>s+(a[i]||0),0);
-    const variable    = Object.values(raw.variable).reduce((s,a)=>s+(a[i]||0),0);
+    // KB카드에 포함된 통신비 항목들 - 이중집계 방지
+    const KB_MERGED = ["통신비::원중 + 인터넷","통신비::원중폰보험","통신비::공통 (인터넷, tv등)","통신비::혜지"];
+    const kbMergedSum = KB_MERGED.reduce((s,k) => s + (raw.fixed[k]?.[i]||0), 0);
+    const fixed    = Object.values(raw.fixed).reduce((s,a)=>s+(a[i]||0),0) - kbMergedSum;
+    const variable = Object.values(raw.variable).reduce((s,a)=>s+(a[i]||0),0);
 
     // C열 중분류별 월별 합계 (parseRows에서 이미 집세로 통합됨)
     const fixedGroups = Object.fromEntries(Object.entries(fg).map(([g,arr])=>[g, arr[i]||0]));
@@ -278,13 +281,14 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
   const src    = isFixed ? (raw?.fixed || {}) : (raw?.variable || {});
   const keyMap = isFixed ? (raw?.fixedGroupKeys || {}) : (raw?.varGroupKeys || {});
 
-  // 통신비 → 카드 합산 매핑 (표시용, 실집계 변경 없음)
+  // 통신비 → KB카드 합산 매핑 (표시용, 실집계 변경 없음)
   // 나중에 카드 사용 안 할 때 이 설정만 바꾸면 됨
   const MERGE_INTO = {
-    "통신비::원중 + 인터넷": "생활비::원중 카드(KB) - 기타",
-    "통신비::혜지":           "생활비::혜지 카드(KB) - 장보기",
+    "통신비::원중 + 인터넷":       "생활비::원중 카드(KB) - 기타",
+    "통신비::원중폰보험":           "생활비::원중 카드(KB) - 기타",
+    "통신비::공통 (인터넷, tv등)":  "생활비::원중 카드(KB) - 기타",
+    "통신비::혜지":                 "생활비::혜지 카드(KB) - 장보기",
   };
-  // 합산될 항목들 (표시에서 숨김)
   const MERGED_KEYS = new Set(Object.keys(MERGE_INTO));
 
   const getVal = (uKey) => monthIdx !== null
@@ -296,9 +300,17 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
       {Object.entries(groups).map(([group, groupTotal]) => {
         if (!groupTotal) return null;
 
-        const items = Object.entries(keyMap)
+        // KB카드로 합산되는 통신비 항목 (참고용 표시)
+        const mergedItems = Object.entries(keyMap)
           .filter(([,g]) => g === group)
-          .filter(([uKey]) => !MERGED_KEYS.has(uKey)) // 합산될 항목 숨김
+          .filter(([uKey]) => MERGED_KEYS.has(uKey))
+          .map(([uKey]) => ({ uKey, label: uKey.replace("::", ": "), v: getVal(uKey) }))
+          .filter(x => x.v > 0);
+
+        // 일반 항목 (합계에 포함)
+        const normalItems = Object.entries(keyMap)
+          .filter(([,g]) => g === group)
+          .filter(([uKey]) => !MERGED_KEYS.has(uKey))
           .map(([uKey]) => {
             let v = getVal(uKey);
             let suffix = "";
@@ -316,18 +328,33 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
           })
           .filter(x => x.v > 0);
 
+        // 그룹 합계에서 통신비 제외한 실제 합계
+        const adjustedTotal = groupTotal - mergedItems.reduce((s,x)=>s+x.v,0);
+
         return (
           <div key={group} style={{ marginBottom:10 }}>
             <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
               <span>{group}</span>
-              <span>{privacy?"●●●":fmt(groupTotal)}</span>
+              <span>{privacy?"●●●":fmt(adjustedTotal > 0 ? adjustedTotal : groupTotal)}</span>
             </div>
-            {items.map(({uKey, label, v}) => (
+            {normalItems.map(({uKey, label, v}) => (
               <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
                 <span>{label}</span>
                 <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(v)}</span>
               </div>
             ))}
+            {/* 통신비 참고용 표시 */}
+            {mergedItems.length > 0 && (
+              <div style={{ marginTop:4, padding:"4px 8px", background:"#E0DBD6", borderRadius:6 }}>
+                <div style={{ fontSize:9, color:"#999999", marginBottom:3 }}>KB카드에 포함 (참고)</div>
+                {mergedItems.map(({uKey, label, v}) => (
+                  <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#AAAAAA", padding:"2px 0" }}>
+                    <span>{label}</span>
+                    <span>{privacy?"●●●":fmt(v)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
@@ -1221,8 +1248,9 @@ const CHANGELOG = [
     version: "1.6.4",
     date: "2026-04-04",
     items: [
-      "통신비(원중/혜지) 카드 항목에 합산 표시 (통신비 포함)",
-      "디버그 로그 제거",
+      "통신비 4개 항목 KB카드에 합산 표시 (통신비 포함)",
+      "통신비는 KB카드에서 이미 나가므로 고정지출 합계에서 제외",
+      "세부내역에서 통신비 참고용으로 회색 표시",
     ],
   },
   {
