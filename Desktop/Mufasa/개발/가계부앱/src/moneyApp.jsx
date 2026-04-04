@@ -331,35 +331,49 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
         // 그룹 합계에서 통신비 제외한 실제 합계
         const adjustedTotal = groupTotal - mergedItems.reduce((s,x)=>s+x.v,0);
 
-        // 소분류 라벨: "중분류: 소분류" 대신 소분류만
-        const getLabel = (uKey) => uKey.includes("::") ? uKey.split("::")[1] : uKey;
+        // 소분류 라벨: uKey에서 소분류 부분만
+        const getSubLabel = (uKey) => uKey.includes("::") ? uKey.split("::")[1] : "";
 
         return (
           <div key={group} style={{ marginBottom:10 }}>
-            {/* 중분류 헤더 + 소분류 항목들 */}
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
-              <span>{group}</span>
-              <span>{privacy?"●●●":fmt(adjustedTotal > 0 ? adjustedTotal : groupTotal)}</span>
-            </div>
-            {normalItems.map(({uKey, label, v}) => {
-              const suffix = label.includes("(통신비 포함)") ? " (통신비 포함)" : "";
-              return (
-                <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
-                  <span>{getLabel(uKey)}{suffix}</span>
-                  <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(v)}</span>
+            {normalItems.length === 1 && mergedItems.length === 0 ? (
+              // 소분류 1개: 중분류(색) + 소분류(회색) 한 줄
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ fontSize:11, color, fontWeight:700 }}>{group}</span>
+                  {getSubLabel(normalItems[0].uKey) && (
+                    <span style={{ fontSize:10, color:"#AAAAAA" }}>{getSubLabel(normalItems[0].uKey)}</span>
+                  )}
                 </div>
-              );
-            })}
-            {mergedItems.length > 0 && (
-              <div style={{ marginTop:4, padding:"4px 8px", background:"#E0DBD6", borderRadius:6 }}>
-                <div style={{ fontSize:9, color:"#999999", marginBottom:3 }}>KB카드에 포함 (참고)</div>
-                {mergedItems.map(({uKey, v}) => (
-                  <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#AAAAAA", padding:"2px 0" }}>
-                    <span>{getLabel(uKey)}</span>
-                    <span>{privacy?"●●●":fmt(v)}</span>
-                  </div>
-                ))}
+                <span style={{ fontSize:11, fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(normalItems[0].v)}</span>
               </div>
+            ) : (
+              <>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
+                  <span>{group}</span>
+                  <span>{privacy?"●●●":fmt(adjustedTotal > 0 ? adjustedTotal : groupTotal)}</span>
+                </div>
+                {normalItems.map(({uKey, label, v}) => {
+                  const suffix = label.includes("(통신비 포함)") ? " (통신비 포함)" : "";
+                  return (
+                    <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
+                      <span>{getSubLabel(uKey) || uKey}{suffix}</span>
+                      <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(v)}</span>
+                    </div>
+                  );
+                })}
+                {mergedItems.length > 0 && (
+                  <div style={{ marginTop:4, padding:"4px 8px", background:"#E0DBD6", borderRadius:6 }}>
+                    <div style={{ fontSize:9, color:"#999999", marginBottom:3 }}>KB카드에 포함 (참고)</div>
+                    {mergedItems.map(({uKey, v}) => (
+                      <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#AAAAAA", padding:"2px 0" }}>
+                        <span>{getSubLabel(uKey) || uKey}</span>
+                        <span>{privacy?"●●●":fmt(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         );
@@ -431,13 +445,13 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                   <div style={{ fontSize:15, fontWeight:700, color:"#FF7E36", marginBottom:6 }}>{privacy?"●●●":fmtM(m.income.total)}</div>
                   {!privacy && (
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
-                      <div style={{ background:"#FF7E3612", borderRadius:6, padding:"4px 6px" }}>
-                        <div style={{ fontSize:8, color:"#FF7E36aa", marginBottom:1 }}>급여</div>
-                        <div style={{ fontSize:9, fontWeight:700, color:"#FF7E36" }}>{fmtM(급여합계)}</div>
+                      <div style={{ background:"#FF7E3612", borderRadius:6, padding:"5px 6px" }}>
+                        <div style={{ fontSize:9, color:"#FF7E36aa", marginBottom:2 }}>급여</div>
+                        <div style={{ fontSize:10, fontWeight:700, color:"#FF7E36" }}>{fmtM(급여합계)}</div>
                       </div>
-                      <div style={{ background:"#FF7E3612", borderRadius:6, padding:"4px 6px" }}>
-                        <div style={{ fontSize:8, color:"#FF7E36aa", marginBottom:1 }}>기타</div>
-                        <div style={{ fontSize:9, fontWeight:700, color:"#FF7E36" }}>{fmtM(기타합계)}</div>
+                      <div style={{ background:"#FF7E3612", borderRadius:6, padding:"5px 6px" }}>
+                        <div style={{ fontSize:9, color:"#FF7E36aa", marginBottom:2 }}>기타</div>
+                        <div style={{ fontSize:10, fontWeight:700, color:"#FF7E36" }}>{fmtM(기타합계)}</div>
                       </div>
                     </div>
                   )}
@@ -447,13 +461,13 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                   <div style={{ fontSize:11, color:"#F04452", fontWeight:700, marginBottom:4 }}>고정지출</div>
                   <div style={{ fontSize:15, fontWeight:700, color:"#F04452", marginBottom:6 }}>{fmtM(m.fixed)}</div>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
-                    <div style={{ background:"#F0445212", borderRadius:6, padding:"4px 6px" }}>
-                      <div style={{ fontSize:8, color:"#F04452aa", marginBottom:1 }}>집세</div>
-                      <div style={{ fontSize:9, fontWeight:700, color:"#F04452" }}>{fmtM(m.fixedGroups["집세"]||0)}</div>
+                    <div style={{ background:"#F0445212", borderRadius:6, padding:"5px 6px" }}>
+                      <div style={{ fontSize:9, color:"#F04452aa", marginBottom:2 }}>집세</div>
+                      <div style={{ fontSize:10, fontWeight:700, color:"#F04452" }}>{fmtM(m.fixedGroups["집세"]||0)}</div>
                     </div>
-                    <div style={{ background:"#F0445212", borderRadius:6, padding:"4px 6px" }}>
-                      <div style={{ fontSize:8, color:"#F04452aa", marginBottom:1 }}>기타</div>
-                      <div style={{ fontSize:9, fontWeight:700, color:"#F04452" }}>{fmtM((m.fixed||0)-(m.fixedGroups["집세"]||0))}</div>
+                    <div style={{ background:"#F0445212", borderRadius:6, padding:"5px 6px" }}>
+                      <div style={{ fontSize:9, color:"#F04452aa", marginBottom:2 }}>기타</div>
+                      <div style={{ fontSize:10, fontWeight:700, color:"#F04452" }}>{fmtM((m.fixed||0)-(m.fixedGroups["집세"]||0))}</div>
                     </div>
                   </div>
                   <div style={{ fontSize:9, color:"#888888", marginTop:4 }}>{open==="fixed"?"▲":"▼"} 세부</div>
@@ -1271,6 +1285,14 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.6.9",
+    date: "2026-04-04",
+    items: [
+      "세부내역 소분류 1개일 때 중분류(색)+소분류(회색) 한 줄 표시",
+      "월별 카드 미니카드 글씨 크기 개선",
+    ],
+  },
   {
     version: "1.6.8",
     date: "2026-04-04",
