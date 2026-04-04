@@ -261,8 +261,8 @@ function AccordionCard({ label, value, color, sub, isOpen, onToggle, children })
       }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
-            <div style={{ fontSize:9, color, fontWeight:700, letterSpacing:.8, marginBottom:6 }}>{label}</div>
-            <div style={{ fontSize:20, fontWeight:700, color:isOpen?color:"#1A1A1A" }}>
+            <div style={{ fontSize:11, color, fontWeight:700, marginBottom:6, textAlign:"left" }}>{label}</div>
+            <div style={{ fontSize:20, fontWeight:700, color:isOpen?color:"#1A1A1A", textAlign:"left" }}>
               {typeof value === "string" ? value : fmt(value)}
             </div>
           </div>
@@ -331,38 +331,35 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
         // 그룹 합계에서 통신비 제외한 실제 합계
         const adjustedTotal = groupTotal - mergedItems.reduce((s,x)=>s+x.v,0);
 
+        // 소분류 라벨: "중분류: 소분류" 대신 소분류만
+        const getLabel = (uKey) => uKey.includes("::") ? uKey.split("::")[1] : uKey;
+
         return (
           <div key={group} style={{ marginBottom:10 }}>
-            {normalItems.length === 1 && mergedItems.length === 0 ? (
-              // 항목 1개면 중분류 헤더 없이 한 줄로
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0", borderBottom:"1px solid #DDD8D3" }}>
-                <span style={{ fontWeight:700, color }}>{group}</span>
-                <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(normalItems[0].v)}</span>
-              </div>
-            ) : (
-              <>
-                <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
-                  <span>{group}</span>
-                  <span>{privacy?"●●●":fmt(adjustedTotal > 0 ? adjustedTotal : groupTotal)}</span>
+            {/* 중분류 헤더 + 소분류 항목들 */}
+            <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
+              <span>{group}</span>
+              <span>{privacy?"●●●":fmt(adjustedTotal > 0 ? adjustedTotal : groupTotal)}</span>
+            </div>
+            {normalItems.map(({uKey, label, v}) => {
+              const suffix = label.includes("(통신비 포함)") ? " (통신비 포함)" : "";
+              return (
+                <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
+                  <span>{getLabel(uKey)}{suffix}</span>
+                  <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(v)}</span>
                 </div>
-                {normalItems.map(({uKey, label, v}) => (
-                  <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
-                    <span>{label}</span>
-                    <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(v)}</span>
+              );
+            })}
+            {mergedItems.length > 0 && (
+              <div style={{ marginTop:4, padding:"4px 8px", background:"#E0DBD6", borderRadius:6 }}>
+                <div style={{ fontSize:9, color:"#999999", marginBottom:3 }}>KB카드에 포함 (참고)</div>
+                {mergedItems.map(({uKey, v}) => (
+                  <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#AAAAAA", padding:"2px 0" }}>
+                    <span>{getLabel(uKey)}</span>
+                    <span>{privacy?"●●●":fmt(v)}</span>
                   </div>
                 ))}
-                {mergedItems.length > 0 && (
-                  <div style={{ marginTop:4, padding:"4px 8px", background:"#E0DBD6", borderRadius:6 }}>
-                    <div style={{ fontSize:9, color:"#999999", marginBottom:3 }}>KB카드에 포함 (참고)</div>
-                    {mergedItems.map(({uKey, label, v}) => (
-                      <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#AAAAAA", padding:"2px 0" }}>
-                        <span>{label}</span>
-                        <span>{privacy?"●●●":fmt(v)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
+              </div>
             )}
           </div>
         );
@@ -375,7 +372,7 @@ function NetCard({ label, net, income, expense, privacy }) {
   const pos=net>=0;
   return (
     <div style={{ background:"#EDE8E3", border:`1px solid ${pos?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-      <div>
+      <div style={{ textAlign:"left" }}>
         <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:6 }}>{label}</div>
         <div style={{ fontSize:22, fontWeight:700, color:pos?"#00C471":"#F04452" }}>{privacy?"●●●":(pos?"+":"")+fmt(net)}</div>
       </div>
@@ -1263,8 +1260,9 @@ const CHANGELOG = [
     version: "1.6.5",
     date: "2026-04-04",
     items: [
-      "소분류 1개인 중분류 헤더 없이 한 줄로 표시",
-      "수입 세부내역 동일하게 적용",
+      "세부내역 중분류 헤더+소분류 이중 표시 제거 (소분류명만 표시)",
+      "총수입/순이익 등 라벨 왼쪽 정렬",
+      "AccordionCard 라벨 글씨 크기 개선",
     ],
   },
   {
