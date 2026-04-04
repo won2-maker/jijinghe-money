@@ -84,15 +84,20 @@ function parseRows(rows) {
       return;
     }
 
-    // ── 부채/금융자산/실물자산: C열이 항목명, D열은 세부용도(스킵 안함) ──
+    // ── 부채/금융자산/실물자산: C열이 항목명 ──
+    // lastB가 합계면 스킵
+    if (lastB === "합계") return;
+    // A열에 다른 섹션 텍스트가 새로 나타나면 해당 섹션 종료
+    // → aRaw가 비어있거나 현재 섹션과 같을 때만 집계
+    if (aRaw && aRaw !== lastA) return;
+    // C열 새 값이 있는 행만 집계
+    if (!cRaw) return;
+
     if (lastA === "부채") {
-      if (!lastC) return;
       addMonthly(debt, lastC, i);
     } else if (lastA === "금융자산") {
-      if (!lastC) return;
       addMonthly(assets, lastC, i);
     } else if (lastA === "실물자산") {
-      if (!lastC) return;
       addMonthly(physicalAssets, lastC, i);
     }
   });
