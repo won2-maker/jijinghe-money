@@ -254,32 +254,32 @@ function AccordionCard({ label, value, color, sub, isOpen, onToggle, children })
 }
 
 function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
-  // 중분류별 소분류 항목 찾기
-  const src = isFixed ? (raw?.fixed || {}) : (raw?.variable || {});
-  const groupMap = isFixed ? (raw?.fixedGroups || {}) : (raw?.varGroups || {});
+  const src     = isFixed ? (raw?.fixed || {}) : (raw?.variable || {});
+  const keyMap  = isFixed ? (raw?.fixedGroupKeys || {}) : (raw?.varGroupKeys || {});
 
   return (
     <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
       {Object.entries(groups).map(([group, groupTotal]) => {
         if (!groupTotal) return null;
-        // 이 중분류에 속하는 소분류 항목들 찾기 (raw.fixed/variable에서 C열 기준 매칭)
-        // groupMap에서 해당 그룹의 키 배열 가져오기 (없으면 빈 배열)
-        const itemKeys = Object.keys(src).filter(k => {
-          // 해당 그룹에 속하는 항목인지 확인 (groupMap 역매핑)
-          return raw[isFixed?"fixedGroupKeys":"varGroupKeys"]?.[k] === group;
-        });
-        const items = itemKeys
-          .map(k => ({ k, v: monthIdx !== null ? (src[k]?.[monthIdx] || 0) : (src[k] || []).reduce((a,b)=>a+b,0) }))
+        // keyMap에서 이 중분류에 속하는 소분류 항목 찾기
+        const items = Object.entries(keyMap)
+          .filter(([,cKey]) => cKey === group)
+          .map(([dKey]) => ({
+            k: dKey,
+            v: monthIdx !== null
+              ? (src[dKey]?.[monthIdx] || 0)
+              : (src[dKey] || []).reduce((a,b)=>a+b, 0)
+          }))
           .filter(x => x.v > 0);
 
         return (
           <div key={group} style={{ marginBottom:10 }}>
             <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
               <span>{group}</span>
-              <span style={{ fontWeight:700 }}>{privacy?"●●●":fmt(groupTotal)}</span>
+              <span>{privacy?"●●●":fmt(groupTotal)}</span>
             </div>
             {items.map(({k,v}) => (
-              <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"2px 0 2px 8px" }}>
+              <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
                 <span>{k}</span>
                 <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(v)}</span>
               </div>
@@ -891,26 +891,27 @@ function AlertTab({ monthly, active, raw, privacy }) {
 
       {/* 총 지출 변화 요약 */}
       <div style={{ background:"#EDE8E3", border:`1px solid ${totalDiff===null||totalDiff<=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
-        <div style={{ fontSize:9, color:"#888888", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>총 지출 전월 대비</div>
+        <div style={{ fontSize:9, color:"#888888", fontWeight:700, letterSpacing:.8, marginBottom:8 }}>총 지출 전월 대비</div>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
             {totalDiff === null ? (
-              <div style={{ fontSize:20, fontWeight:700, color:"#1A1A1A" }}>{fmtM(totalCur)}</div>
+              <div style={{ fontSize:22, fontWeight:700, color:"#1A1A1A" }}>{fmtM(totalCur)}</div>
             ) : (
               <>
-                <div style={{ fontSize:20, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471" }}>
-                  {totalDiff>0?"+":""}{fmtM(totalDiff)}
-                </div>
-                <div style={{ fontSize:12, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471", marginTop:4 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471", marginBottom:4 }}>
                   {totalDiff>0 ? spentMore : spentLess}
+                </div>
+                <div style={{ fontSize:22, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471" }}>
+                  {fmtM(Math.abs(totalDiff))}
                 </div>
               </>
             )}
           </div>
           {totalDiff !== null && (
-            <div style={{ textAlign:"right", fontSize:11, color:"#888888" }}>
-              <div>{fmtM(totalPrev)}</div>
-              <div style={{ fontSize:9, marginTop:2 }}>→ {fmtM(totalCur)}</div>
+            <div style={{ textAlign:"right" }}>
+              <div style={{ fontSize:10, color:"#888888", marginBottom:4 }}>이번 달 총 지출</div>
+              <div style={{ fontSize:18, fontWeight:700, color:"#1A1A1A" }}>{fmtM(totalCur)}</div>
+              <div style={{ fontSize:10, color:"#AAAAAA", marginTop:2 }}>전월 {fmtM(totalPrev)}</div>
             </div>
           )}
         </div>
@@ -1102,6 +1103,14 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.4.2",
+    date: "2026-04-04",
+    items: [
+      "세부내역 소분류 표시 버그 수정 (fixedGroupKeys 접근 오류)",
+      "지출 알림 총액 카드 - 부호 제거, 총액 크게 표시",
+    ],
+  },
   {
     version: "1.4.1",
     date: "2026-04-04",
