@@ -75,10 +75,10 @@ function parseRows(rows) {
         addMonthly(income, dCol, i);
       } else if (lastB === "고정지출") {
         addMonthly(fixedByItem, dCol, i);
-        if (lastC) { addMonthly(fixedGroups, lastC, i); fixedGroupKeys[dCol] = lastC; }
+        if (lastC) { fixedGroupKeys[dCol] = lastC; }
       } else if (lastB === "변동지출") {
         addMonthly(variableByItem, dCol, i);
-        if (lastC) { addMonthly(varGroups, lastC, i); varGroupKeys[dCol] = lastC; }
+        if (lastC) { varGroupKeys[dCol] = lastC; }
       }
       return;
     }
@@ -97,6 +97,18 @@ function parseRows(rows) {
     } else if (lastA === "실물자산") {
       addMonthly(physicalAssets, lastC, i);
     }
+  });
+
+  // fixedGroupKeys 기반으로 fixedGroups/varGroups 재계산
+  Object.entries(fixedGroupKeys).forEach(([dKey, cKey]) => {
+    if (!fixedByItem[dKey]) return;
+    if (!fixedGroups[cKey]) fixedGroups[cKey] = Array(12).fill(0);
+    fixedByItem[dKey].forEach((v,i) => { fixedGroups[cKey][i] += v; });
+  });
+  Object.entries(varGroupKeys).forEach(([dKey, cKey]) => {
+    if (!variableByItem[dKey]) return;
+    if (!varGroups[cKey]) varGroups[cKey] = Array(12).fill(0);
+    variableByItem[dKey].forEach((v,i) => { varGroups[cKey][i] += v; });
   });
 
   return {
@@ -504,7 +516,7 @@ function YearTab({ monthly, active, raw, privacy }) {
   const [open, setOpen] = useState(null);
   const toggle = key => setOpen(p=>p===key?null:key);
 
-  const totalIncome = { total: sum(monthly.map(m=>m.income.total)) };
+  const totalIncome   = { total: sum(monthly.map(m=>m.income.total)) };
   const totalFixed    = sum(monthly.map(m=>m.fixed));
   const totalVariable = sum(monthly.map(m=>m.variable));
   const totalNet      = sum(monthly.map(m=>m.순익));
@@ -519,7 +531,13 @@ function YearTab({ monthly, active, raw, privacy }) {
   });
   if (집세연간 > 0) yearFixedGroups["집세"] = 집세연간;
   const yearVarGroups = Object.fromEntries(Object.entries(vg).map(([g,arr])=>[g, sum(arr)]));
-  const barData = active.map(a=>({ name:a.month, 수입:a.income.total, 고정지출:a.fixed, 변동지출:a.variable }));
+
+  // 차트 데이터: 수입 / 지출(고정+변동 합산)
+  const barData = active.map(a=>({
+    name: a.month,
+    수입: a.income.total,
+    지출: a.fixed + a.variable,
+  }));
 
   return (
     <div>
@@ -550,20 +568,27 @@ function YearTab({ monthly, active, raw, privacy }) {
 
       <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
         <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>월별 흐름</div>
-        <ResponsiveContainer width="100%" height={150}>
-          <BarChart data={barData} barGap={2}>
+        <ResponsiveContainer width="100%" height={180}>
+          <LineChart data={barData} margin={{ top:24, right:16, left:16, bottom:0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" />
             <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
             <YAxis hide />
             <RechartTooltip content={<TT />} />
-            {!privacy && <Bar dataKey="수입" fill="#FF7E3666" name="수입" radius={[3,3,0,0]} />}
-            <Bar dataKey="고정지출" fill="#c96a6a66" name="고정지출" radius={[3,3,0,0]} />
-            <Bar dataKey="변동지출" fill="#8B5CF666" name="변동지출" radius={[3,3,0,0]} />
-          </BarChart>
+            {!privacy && (
+              <Line type="monotone" dataKey="수입" name="수입"
+                stroke="#FF7E36" strokeWidth={2} dot={false}
+                activeDot={{ r:5, fill:"#FF7E36", stroke:"#EDE8E3", strokeWidth:2 }}
+              />
+            )}
+            <Line type="monotone" dataKey="지출" name="지출"
+              stroke="#F04452" strokeWidth={2} dot={false}
+              activeDot={{ r:5, fill:"#F04452", stroke:"#EDE8E3", strokeWidth:2 }}
+            />
+          </LineChart>
         </ResponsiveContainer>
-        <div style={{ display:"flex", gap:12, justifyContent:"center", fontSize:10, color:"#444444", marginTop:4 }}>
+        <div style={{ display:"flex", gap:12, justifyContent:"center", fontSize:10, color:"#444444", marginTop:6 }}>
           {!privacy && <span><span style={{color:"#FF7E36"}}>■</span> 수입</span>}
-          <span><span style={{color:"#F04452"}}>■</span> 고정지출</span>
-          <span><span style={{color:"#8B5CF6"}}>■</span> 변동지출</span>
+          <span><span style={{color:"#F04452"}}>■</span> 지출 (고정+변동)</span>
         </div>
       </div>
     </div>
@@ -1077,6 +1102,15 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.4.1",
+    date: "2026-04-04",
+    items: [
+      "중분류 이중집계 버그 수정 (통신비 등 소분류 합산 오류)",
+      "연간 탭 월별 흐름 - 수입/지출 라인차트로 변경",
+      "연간 탭 총 고정지출 계산 수정",
+    ],
+  },
   {
     version: "1.4.0",
     date: "2026-04-04",
