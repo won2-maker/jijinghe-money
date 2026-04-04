@@ -51,7 +51,8 @@ function parseRows(rows) {
   };
 
   const income         = {};
-  const incomeGroupKeys= {};
+  const incomeGroupKeys= {}; // uKey → C열 중분류
+  const incomeBGroup   = {}; // uKey → B열 대분류 (급여/기타 구분용)
   const fixedByItem    = {};
   const variableByItem = {};
   const fixedGroups    = {};
@@ -78,10 +79,13 @@ function parseRows(rows) {
     if ([aRaw,bRaw,cRaw,dCol].some(v => v.includes("합계"))) return;
 
     if (lastA === "수익") {
-      if (!dCol) return;
-      const uKey = lastC ? `${lastC}::${dCol}` : dCol;
+      // D열 있으면 D열, 없으면 C열로 항목명 결정
+      const itemName = dCol || lastC;
+      if (!itemName) return;
+      const uKey = lastC && dCol ? `${lastC}::${dCol}` : itemName;
       addMonthly(income, uKey, i);
       incomeGroupKeys[uKey] = lastC || "기타";
+      incomeBGroup[uKey]    = lastB || "기타"; // B열 대분류 저장
       return;
     }
 
@@ -128,7 +132,7 @@ function parseRows(rows) {
   });
 
   return {
-    income, incomeGroupKeys,
+    income, incomeGroupKeys, incomeBGroup,
     fixed: fixedByItem, variable: variableByItem,
     fixedGroups, varGroups, fixedGroupKeys, varGroupKeys,
     debt, assets, physicalAssets,
@@ -343,55 +347,83 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
         {/* 왼쪽: 카드 영역 */}
         <div className="desktop-left">
           {/* 3칸 요약 카드 - 항상 3칸 유지, privacy시 수입만 마스킹 */}
-          <div className="summary-3col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
-            <div onClick={()=>!privacy && toggle("income")} style={{ background:open==="income"?"#FF7E3618":"#EDE8E3", border:`1px solid ${open==="income"?"#FF7E36":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:privacy?"default":"pointer" }}>
-              <div style={{ fontSize:11, color:"#FF7E36", fontWeight:700, marginBottom:6 }}>수입</div>
-              <div style={{ fontSize:15, fontWeight:700, color:"#FF7E36" }}>{privacy?"●●●":fmtM(m.income.total)}</div>
-              <div style={{ fontSize:9, color:"#888888", marginTop:4 }}>{privacy?"":open==="income"?"▲":"▼ 세부"}</div>
-            </div>
-            <div onClick={()=>toggle("fixed")} style={{ background:open==="fixed"?"#c96a6a18":"#EDE8E3", border:`1px solid ${open==="fixed"?"#F04452":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
-              <div style={{ fontSize:11, color:"#F04452", fontWeight:700, marginBottom:4 }}>고정지출</div>
-              <div style={{ fontSize:15, fontWeight:700, color:"#F04452", marginBottom:4 }}>{fmtM(m.fixed)}</div>
-              {/* 집세 / 기타 분리 */}
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:"#888888" }}>
-                <span>집세 {fmtM(m.fixedGroups["집세"]||0)}</span>
-                <span>기타 {fmtM((m.fixed||0)-(m.fixedGroups["집세"]||0))}</span>
+          {(() => {
+            // 급여 / 급여 외 소득 분리 계산
+            const 급여합계 = Object.entries(raw.income)
+              .filter(([uKey]) => (raw.incomeBGroup?.[uKey] || "") === "급여")
+              .reduce((s,[,arr]) => s + (arr[selIdx]||0), 0);
+            const 기타합계 = Object.entries(raw.income)
+              .filter(([uKey]) => (raw.incomeBGroup?.[uKey] || "") !== "급여")
+              .reduce((s,[,arr]) => s + (arr[selIdx]||0), 0);
+            return (
+              <div className="summary-3col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
+                <div onClick={()=>!privacy && toggle("income")} style={{ background:open==="income"?"#FF7E3618":"#EDE8E3", border:`1px solid ${open==="income"?"#FF7E36":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:privacy?"default":"pointer" }}>
+                  <div style={{ fontSize:11, color:"#FF7E36", fontWeight:700, marginBottom:4 }}>수입</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#FF7E36", marginBottom:4 }}>{privacy?"●●●":fmtM(m.income.total)}</div>
+                  {!privacy && (
+                    <div style={{ fontSize:9, color:"#888888" }}>
+                      <div>급여 {fmtM(급여합계)}</div>
+                      <div>기타 {fmtM(기타합계)}</div>
+                    </div>
+                  )}
+                  <div style={{ fontSize:9, color:"#888888", marginTop:3 }}>{privacy?"":open==="income"?"▲":"▼ 세부"}</div>
+                </div>
+                <div onClick={()=>toggle("fixed")} style={{ background:open==="fixed"?"#c96a6a18":"#EDE8E3", border:`1px solid ${open==="fixed"?"#F04452":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
+                  <div style={{ fontSize:11, color:"#F04452", fontWeight:700, marginBottom:4 }}>고정지출</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#F04452", marginBottom:4 }}>{fmtM(m.fixed)}</div>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:"#888888" }}>
+                    <span>집세 {fmtM(m.fixedGroups["집세"]||0)}</span>
+                    <span>기타 {fmtM((m.fixed||0)-(m.fixedGroups["집세"]||0))}</span>
+                  </div>
+                  <div style={{ fontSize:9, color:"#888888", marginTop:3 }}>{open==="fixed"?"▲":"▼"} 세부</div>
+                </div>
+                <div onClick={()=>toggle("variable")} style={{ background:open==="variable"?"#9b77c918":"#EDE8E3", border:`1px solid ${open==="variable"?"#8B5CF6":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
+                  <div style={{ fontSize:11, color:"#8B5CF6", fontWeight:700, marginBottom:6 }}>변동지출</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#8B5CF6" }}>{fmtM(m.variable)}</div>
+                  <div style={{ fontSize:9, color:"#888888", marginTop:4 }}>{open==="variable"?"▲":"▼"} 세부</div>
+                </div>
               </div>
-              <div style={{ fontSize:9, color:"#888888", marginTop:3 }}>{open==="fixed"?"▲":"▼"} 세부</div>
-            </div>
-            <div onClick={()=>toggle("variable")} style={{ background:open==="variable"?"#9b77c918":"#EDE8E3", border:`1px solid ${open==="variable"?"#8B5CF6":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
-              <div style={{ fontSize:11, color:"#8B5CF6", fontWeight:700, marginBottom:6 }}>변동지출</div>
-              <div style={{ fontSize:15, fontWeight:700, color:"#8B5CF6" }}>{fmtM(m.variable)}</div>
-              <div style={{ fontSize:9, color:"#888888", marginTop:4 }}>{open==="variable"?"▲":"▼"} 세부</div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* 세부내역 드로어 */}
           {open==="income" && !privacy && (
             <div style={{ marginBottom:8 }}>
               <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
                 {(() => {
-                  const groups = {};
-                  Object.entries(raw.income).forEach(([uKey, arr]) => {
-                    const v = arr[selIdx] || 0;
-                    if (!v) return;
-                    const cKey = raw.incomeGroupKeys?.[uKey] || "기타";
-                    const label = uKey.includes("::") ? uKey.split("::").slice(1).join(" ") : uKey;
-                    if (!groups[cKey]) groups[cKey] = [];
-                    groups[cKey].push({ label, v });
-                  });
-                  return Object.entries(groups).map(([cKey, items]) => (
-                    <div key={cKey} style={{ marginBottom:8 }}>
-                      <div style={{ fontSize:10, color:"#FF7E36", fontWeight:700, marginBottom:4, paddingBottom:3, borderBottom:"1px solid #FF7E3622" }}>
-                        {cKey}
-                      </div>
-                      {items.map(({label,v}) => (
-                        <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
-                          <span>{label}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
+                  // B열 기준: 급여 / 급여 외 소득 분리
+                  const 급여Total = Object.entries(raw.income)
+                    .filter(([uKey]) => (raw.incomeBGroup?.[uKey]||"") === "급여")
+                    .reduce((s,[,arr]) => s+(arr[selIdx]||0), 0);
+                  const 기타Items = Object.entries(raw.income)
+                    .filter(([uKey]) => {
+                      const v = (raw.income[uKey]?.[selIdx]||0);
+                      return v > 0 && (raw.incomeBGroup?.[uKey]||"") !== "급여";
+                    })
+                    .map(([uKey, arr]) => ({
+                      label: uKey.includes("::") ? uKey.split("::").slice(1).join(" ") : uKey,
+                      v: arr[selIdx]||0
+                    }));
+                  return (
+                    <>
+                      {급여Total > 0 && (
+                        <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                          <span style={{ fontWeight:700, color:"#FF7E36" }}>급여</span>
+                          <span style={{ fontWeight:700, color:"#FF7E36" }}>{fmt(급여Total)}</span>
                         </div>
-                      ))}
-                    </div>
-                  ));
+                      )}
+                      {기타Items.length > 0 && (
+                        <div style={{ marginTop:8 }}>
+                          <div style={{ fontSize:10, color:"#FF7E36", fontWeight:700, marginBottom:4, paddingBottom:3, borderBottom:"1px solid #FF7E3622" }}>급여 외 소득</div>
+                          {기타Items.map(({label,v}) => (
+                            <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
+                              <span>{label}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
                 })()}
               </div>
             </div>
@@ -1145,6 +1177,15 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.5.3",
+    date: "2026-04-04",
+    items: [
+      "수입 카드 - 급여/급여 외 소득 분리 표시",
+      "급여 외 소득 (기타 대분류) 수익 집계 수정",
+      "수입 세부내역 - 급여 합계 한 줄, 기타 소득 항목별 표시",
+    ],
+  },
   {
     version: "1.5.2",
     date: "2026-04-04",
