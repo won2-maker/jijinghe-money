@@ -45,12 +45,13 @@ function parseRows(rows) {
   };
 
   const income         = {};
+  const incomeGroupKeys= {}; // 수입 소분류→중분류 역매핑
   const fixedByItem    = {};
   const variableByItem = {};
   const fixedGroups    = {};
   const varGroups      = {};
-  const fixedGroupKeys = {}; // 소분류→중분류 역매핑
-  const varGroupKeys   = {}; // 소분류→중분류 역매핑
+  const fixedGroupKeys = {};
+  const varGroupKeys   = {};
   const debt           = {};
   const assets         = {};
   const physicalAssets = {};
@@ -73,6 +74,7 @@ function parseRows(rows) {
       if (!dCol) return; // D열 없으면 스킵
       if (lastA === "수익") {
         addMonthly(income, dCol, i);
+        if (lastC) incomeGroupKeys[dCol] = lastC;
       } else if (lastB === "고정지출") {
         addMonthly(fixedByItem, dCol, i);
         if (lastC) { fixedGroupKeys[dCol] = lastC; }
@@ -100,10 +102,13 @@ function parseRows(rows) {
   });
 
   // fixedGroupKeys 기반으로 fixedGroups/varGroups 재계산
+  // 주거/집 관리비 → 집세로 통합 매핑
   Object.entries(fixedGroupKeys).forEach(([dKey, cKey]) => {
     if (!fixedByItem[dKey]) return;
-    if (!fixedGroups[cKey]) fixedGroups[cKey] = Array(12).fill(0);
-    fixedByItem[dKey].forEach((v,i) => { fixedGroups[cKey][i] += v; });
+    const groupName = (cKey === "주거" || cKey === "집 관리비") ? "집세" : cKey;
+    fixedGroupKeys[dKey] = groupName; // 집세로 재매핑
+    if (!fixedGroups[groupName]) fixedGroups[groupName] = Array(12).fill(0);
+    fixedByItem[dKey].forEach((v,i) => { fixedGroups[groupName][i] += v; });
   });
   Object.entries(varGroupKeys).forEach(([dKey, cKey]) => {
     if (!variableByItem[dKey]) return;
@@ -113,6 +118,7 @@ function parseRows(rows) {
 
   return {
     income,
+    incomeGroupKeys,
     fixed:    fixedByItem,
     variable: variableByItem,
     fixedGroups,
@@ -146,19 +152,8 @@ function buildMonthly(raw) {
     const fixed       = Object.values(raw.fixed).reduce((s,a)=>s+(a[i]||0),0);
     const variable    = Object.values(raw.variable).reduce((s,a)=>s+(a[i]||0),0);
 
-    // C열 중분류별 월별 합계 — "주거"+"집 관리비"를 "집세"로 통합 표시
-    const fixedGroupsRaw = Object.fromEntries(Object.entries(fg).map(([g,arr])=>[g, arr[i]||0]));
-    const fixedGroups = {};
-    let 집세 = 0;
-    Object.entries(fixedGroupsRaw).forEach(([g, v]) => {
-      if (g === "주거" || g === "집 관리비") {
-        집세 += v;
-      } else {
-        fixedGroups[g] = v;
-      }
-    });
-    if (집세 > 0) fixedGroups["집세"] = 집세;
-
+    // C열 중분류별 월별 합계 (parseRows에서 이미 집세로 통합됨)
+    const fixedGroups = Object.fromEntries(Object.entries(fg).map(([g,arr])=>[g, arr[i]||0]));
     const varGroups   = Object.fromEntries(Object.entries(vg).map(([g,arr])=>[g, arr[i]||0]));
     const totalDebt     = Object.values(raw.debt).reduce((s,a)=>s+(a[i]||0),0);
     const totalAsset    = Object.values(raw.assets).reduce((s,a)=>s+(a[i]||0),0);
@@ -366,14 +361,29 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
           {open==="income" && !privacy && (
             <div style={{ marginBottom:8 }}>
               <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
-                {Object.entries(raw.income).map(([k,arr])=>{
-                  const v = arr[selIdx]||0;
-                  return v>0 ? (
-                    <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
-                      <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
+                {(() => {
+                  // C열 중분류 기준으로 그룹핑해서 표시
+                  const groups = {};
+                  Object.entries(raw.income).forEach(([k, arr]) => {
+                    const v = arr[selIdx] || 0;
+                    if (!v) return;
+                    const cKey = raw.incomeGroupKeys?.[k] || "기타";
+                    if (!groups[cKey]) groups[cKey] = [];
+                    groups[cKey].push({ k, v });
+                  });
+                  return Object.entries(groups).map(([cKey, items]) => (
+                    <div key={cKey} style={{ marginBottom:8 }}>
+                      <div style={{ fontSize:10, color:"#FF7E36", fontWeight:700, marginBottom:4, paddingBottom:3, borderBottom:"1px solid #FF7E3622" }}>
+                        {cKey}
+                      </div>
+                      {items.map(({k,v}) => (
+                        <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
+                          <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
+                        </div>
+                      ))}
                     </div>
-                  ) : null;
-                })}
+                  ));
+                })()}
               </div>
             </div>
           )}
@@ -522,15 +532,8 @@ function YearTab({ monthly, active, raw, privacy }) {
   const totalNet      = sum(monthly.map(m=>m.순익));
   const fg = raw.fixedGroups || {};
   const vg = raw.varGroups   || {};
-  const yearFixedGroupsRaw = Object.fromEntries(Object.entries(fg).map(([g,arr])=>[g, sum(arr)]));
-  const yearFixedGroups = {};
-  let 집세연간 = 0;
-  Object.entries(yearFixedGroupsRaw).forEach(([g,v]) => {
-    if (g === "주거" || g === "집 관리비") { 집세연간 += v; }
-    else { yearFixedGroups[g] = v; }
-  });
-  if (집세연간 > 0) yearFixedGroups["집세"] = 집세연간;
-  const yearVarGroups = Object.fromEntries(Object.entries(vg).map(([g,arr])=>[g, sum(arr)]));
+  const yearFixedGroups = Object.fromEntries(Object.entries(fg).map(([g,arr])=>[g, sum(arr)]));
+  const yearVarGroups   = Object.fromEntries(Object.entries(vg).map(([g,arr])=>[g, sum(arr)]));
 
   // 차트 데이터: 수입 / 지출(고정+변동 합산)
   const barData = active.map(a=>({
@@ -545,12 +548,26 @@ function YearTab({ monthly, active, raw, privacy }) {
 
       <AccordionCard label="총 수입" value={privacy?"●●●":totalIncome.total} color="#FF7E36" isOpen={open==="income"&&!privacy} onToggle={()=>!privacy&&toggle("income")}
         sub={<div style={{ fontSize:10, color:"#333333" }}>연간 합계</div>}>
-        <div style={{ background:"#F5F0EB", border:"1px solid #e8c76a22", borderRadius:12, padding:"12px 14px" }}>
-          {Object.entries(raw.income).map(([k,arr])=>{ const v=sum(arr); if(!v) return null; return (
-            <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", padding:"4px 0", borderBottom:"1px solid #E8E0D8" }}>
-              <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
-            </div>
-          ); })}
+        <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
+          {(() => {
+            const groups = {};
+            Object.entries(raw.income).forEach(([k,arr]) => {
+              const v = sum(arr); if (!v) return;
+              const cKey = raw.incomeGroupKeys?.[k] || "기타";
+              if (!groups[cKey]) groups[cKey] = [];
+              groups[cKey].push({ k, v });
+            });
+            return Object.entries(groups).map(([cKey, items]) => (
+              <div key={cKey} style={{ marginBottom:8 }}>
+                <div style={{ fontSize:10, color:"#FF7E36", fontWeight:700, marginBottom:4, paddingBottom:3, borderBottom:"1px solid #FF7E3622" }}>{cKey}</div>
+                {items.map(({k,v}) => (
+                  <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
+                    <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
+                  </div>
+                ))}
+              </div>
+            ));
+          })()}
         </div>
       </AccordionCard>
 
@@ -1103,6 +1120,15 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.4.3",
+    date: "2026-04-04",
+    items: [
+      "수입/고정/변동지출 세부내역 C열+D열 같이 표시",
+      "집세 통합 이중합산 버그 수정 (parseRows에서 통합 처리)",
+      "총 고정지출 계산 정확도 개선",
+    ],
+  },
   {
     version: "1.4.2",
     date: "2026-04-04",
