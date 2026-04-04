@@ -31,27 +31,27 @@ function parseNum(s) {
 }
 
 // Apps Script에서 받은 2D 배열(rows)을 파싱
+// A열 구분, B열 대분류, C열 중분류 기준으로 동적 파싱 — 행 번호 하드코딩 없음
 function parseRows(rows) {
 
+  // 월별 값 추출 (col 4~15 = 1월~12월)
   const getMonthly = (rowIdx) => {
     const r = rows[rowIdx] || [];
     return Array.from({length:12}, (_,i) => parseNum(r[4+i]));
   };
 
+  // 월별 배열 합산 유틸
   const addMonthly = (target, key, rowIdx) => {
     const vals = getMonthly(rowIdx);
     if (!target[key]) target[key] = Array(12).fill(0);
     vals.forEach((v,i) => { target[key][i] += v; });
   };
 
-  const income         = {};
-  const incomeGroupKeys= {}; // 수입 소분류→중분류 역매핑
-  const fixedByItem    = {};
-  const variableByItem = {};
-  const fixedGroups    = {};
-  const varGroups      = {};
-  const fixedGroupKeys = {};
-  const varGroupKeys   = {};
+  const income         = {}; // D열 소분류별
+  const fixedByItem    = {}; // D열 소분류별 (총합용)
+  const variableByItem = {}; // D열 소분류별 (총합용)
+  const fixedGroups    = {}; // C열 중분류별 합산
+  const varGroups      = {}; // C열 중분류별 합산
   const debt           = {};
   const assets         = {};
   const physicalAssets = {};
@@ -68,63 +68,37 @@ function parseRows(rows) {
     if (bRaw) lastB = bRaw;
     if (cRaw) lastC = cRaw;
 
-    // "합계" 포함 행 스킵 (현재 행 기준)
-    if ([aRaw,bRaw,cRaw,dCol].some(v => v.includes("합계"))) return;
-    if (lastA === "수익" || lastA === "지출") {
-      if (!dCol) return; // D열 없으면 스킵
-      if (lastA === "수익") {
-        addMonthly(income, dCol, i);
-        if (lastC) incomeGroupKeys[dCol] = lastC;
-      } else if (lastB === "고정지출") {
-        addMonthly(fixedByItem, dCol, i);
-        if (lastC) { fixedGroupKeys[dCol] = lastC; }
-      } else if (lastB === "변동지출") {
-        addMonthly(variableByItem, dCol, i);
-        if (lastC) { varGroupKeys[dCol] = lastC; }
-      }
-      return;
-    }
+    // 합계 행 스킵
+    if (lastB.includes("합계") || dCol.includes("합계")) return;
+    if (lastC.includes("합계")) return;
+    // 항목명 없으면 스킵
+    if (!dCol) return;
 
-    // ── 부채/금융자산/실물자산: C열이 항목명 ──
-    // 합계 행 스킵 (이미 위에서 처리됨)
-    // 계산용 행 스킵 (투자수익, 비중 등)
-    const skipKeywords = ["수익률", "투자수익", "소득 대비", "총 부채상환", "총 자산", "잔금"];
-    if (skipKeywords.some(k => [bRaw,cRaw,dCol].some(v => v.includes(k)))) return;
-    if (!lastC) return;
-
-    if (lastA === "부채") {
-      addMonthly(debt, lastC, i);
+    if (lastA === "수익") {
+      addMonthly(income, dCol, i);
+    } else if (lastA === "지출" && lastB === "고정지출") {
+      // D열 소분류별로 저장 (전체 합산용)
+      addMonthly(fixedByItem, dCol, i);
+      // C열 중분류별로도 합산
+      if (lastC) addMonthly(fixedGroups, lastC, i);
+    } else if (lastA === "지출" && lastB === "변동지출") {
+      addMonthly(variableByItem, dCol, i);
+      if (lastC) addMonthly(varGroups, lastC, i);
+    } else if (lastA === "부채") {
+      addMonthly(debt, dCol, i);
     } else if (lastA === "금융자산") {
-      addMonthly(assets, lastC, i);
+      addMonthly(assets, dCol, i);
     } else if (lastA === "실물자산") {
-      addMonthly(physicalAssets, lastC, i);
+      addMonthly(physicalAssets, dCol, i);
     }
-  });
-
-  // fixedGroupKeys 기반으로 fixedGroups/varGroups 재계산
-  // 주거/집 관리비 → 집세로 통합 매핑
-  Object.entries(fixedGroupKeys).forEach(([dKey, cKey]) => {
-    if (!fixedByItem[dKey]) return;
-    const groupName = (cKey === "주거" || cKey === "집 관리비") ? "집세" : cKey;
-    fixedGroupKeys[dKey] = groupName; // 집세로 재매핑
-    if (!fixedGroups[groupName]) fixedGroups[groupName] = Array(12).fill(0);
-    fixedByItem[dKey].forEach((v,i) => { fixedGroups[groupName][i] += v; });
-  });
-  Object.entries(varGroupKeys).forEach(([dKey, cKey]) => {
-    if (!variableByItem[dKey]) return;
-    if (!varGroups[cKey]) varGroups[cKey] = Array(12).fill(0);
-    variableByItem[dKey].forEach((v,i) => { varGroups[cKey][i] += v; });
   });
 
   return {
     income,
-    incomeGroupKeys,
     fixed:    fixedByItem,
     variable: variableByItem,
     fixedGroups,
     varGroups,
-    fixedGroupKeys,
-    varGroupKeys,
     debt,
     assets,
     physicalAssets,
@@ -133,6 +107,7 @@ function parseRows(rows) {
 
 // ─────────────────────────────────────────────
 // 그룹핑은 parseRows에서 직접 처리하므로 별도 함수 불필요
+// fetchData에서 buildGroups 대신 parsed에서 바로 사용
 // ─────────────────────────────────────────────
 
 // ─────────────────────────────────────────────
@@ -151,8 +126,7 @@ function buildMonthly(raw) {
     const income      = { total: incomeTotal };
     const fixed       = Object.values(raw.fixed).reduce((s,a)=>s+(a[i]||0),0);
     const variable    = Object.values(raw.variable).reduce((s,a)=>s+(a[i]||0),0);
-
-    // C열 중분류별 월별 합계 (parseRows에서 이미 집세로 통합됨)
+    // C열 중분류별 월별 합계 (이미 parseRows에서 합산된 배열)
     const fixedGroups = Object.fromEntries(Object.entries(fg).map(([g,arr])=>[g, arr[i]||0]));
     const varGroups   = Object.fromEntries(Object.entries(vg).map(([g,arr])=>[g, arr[i]||0]));
     const totalDebt     = Object.values(raw.debt).reduce((s,a)=>s+(a[i]||0),0);
@@ -226,16 +200,14 @@ function AccordionCard({ label, value, color, sub, isOpen, onToggle, children })
   return (
     <div style={{ marginBottom:8 }}>
       <div onClick={onToggle} style={{
-        background:isOpen?`${color}15`:"#EDE8E3",
-        border:`1px solid ${isOpen?color:"transparent"}`,
+        background:isOpen?`${color}15`:"#FFFFFF",
+        border:`1px solid ${isOpen?color:color+"33"}`,
         borderRadius:14, padding:"14px 16px", cursor:"pointer", transition:"all .15s",
       }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
             <div style={{ fontSize:9, color, fontWeight:700, letterSpacing:.8, marginBottom:6 }}>{label}</div>
-            <div style={{ fontSize:20, fontWeight:700, color:isOpen?color:"#1A1A1A" }}>
-              {typeof value === "string" ? value : fmt(value)}
-            </div>
+            <div style={{ fontSize:20, fontWeight:700, color:isOpen?color:"#1A1A1A" }}>{fmt(value)}</div>
           </div>
           <div style={{ textAlign:"right" }}>
             {sub}
@@ -248,37 +220,16 @@ function AccordionCard({ label, value, color, sub, isOpen, onToggle, children })
   );
 }
 
-function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
-  const src     = isFixed ? (raw?.fixed || {}) : (raw?.variable || {});
-  const keyMap  = isFixed ? (raw?.fixedGroupKeys || {}) : (raw?.varGroupKeys || {});
-
+function DetailPanel({ groups, src, monthIdx, color, privacy }) {
   return (
     <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
       {Object.entries(groups).map(([group, groupTotal]) => {
         if (!groupTotal) return null;
-        // keyMap에서 이 중분류에 속하는 소분류 항목 찾기
-        const items = Object.entries(keyMap)
-          .filter(([,cKey]) => cKey === group)
-          .map(([dKey]) => ({
-            k: dKey,
-            v: monthIdx !== null
-              ? (src[dKey]?.[monthIdx] || 0)
-              : (src[dKey] || []).reduce((a,b)=>a+b, 0)
-          }))
-          .filter(x => x.v > 0);
-
         return (
-          <div key={group} style={{ marginBottom:10 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
-              <span>{group}</span>
-              <span>{privacy?"●●●":fmt(groupTotal)}</span>
+          <div key={group} style={{ marginBottom:12 }}>
+            <div style={{ fontSize:10, color, fontWeight:700, marginBottom:6, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
+              {group} <span style={{ fontWeight:400, color:"#666666" }}>{privacy?"●●●":fmt(groupTotal)}</span>
             </div>
-            {items.map(({k,v}) => (
-              <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
-                <span>{k}</span>
-                <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(v)}</span>
-              </div>
-            ))}
           </div>
         );
       })}
@@ -333,72 +284,52 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
       <div className="desktop-2col">
         {/* 왼쪽: 카드 영역 */}
         <div className="desktop-left">
-          {/* 3칸 요약 카드 - 항상 3칸 유지, privacy시 수입만 마스킹 */}
+          {/* 3칸 요약 카드 */}
           <div className="summary-3col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
-            <div onClick={()=>!privacy && toggle("income")} style={{ background:open==="income"?"#FF7E3618":"#EDE8E3", border:`1px solid ${open==="income"?"#FF7E36":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:privacy?"default":"pointer" }}>
+            <div onClick={()=>toggle("income")} style={{ background:open==="income"?"#FF7E3618":"#EDE8E3", border:`1px solid ${open==="income"?"#FF7E36":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
               <div style={{ fontSize:8, color:"#FF7E36", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>수입</div>
               <div style={{ fontSize:15, fontWeight:700, color:"#FF7E36" }}>{privacy?"●●●":fmtM(m.income.total)}</div>
-              <div style={{ fontSize:8, color:"#888888", marginTop:4 }}>{privacy?"":open==="income"?"▲":"▼ 세부"}</div>
+              <div style={{ fontSize:8, color:"#888888", marginTop:4 }}>{open==="income"?"▲":"▼"} 세부</div>
             </div>
             <div onClick={()=>toggle("fixed")} style={{ background:open==="fixed"?"#c96a6a18":"#EDE8E3", border:`1px solid ${open==="fixed"?"#F04452":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
-              <div style={{ fontSize:8, color:"#F04452", fontWeight:700, letterSpacing:.8, marginBottom:4 }}>고정지출</div>
-              <div style={{ fontSize:15, fontWeight:700, color:"#F04452", marginBottom:4 }}>{fmtM(m.fixed)}</div>
-              {/* 집세 / 기타 분리 */}
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:"#888888" }}>
-                <span>집세 {fmtM(m.fixedGroups["집세"]||0)}</span>
-                <span>기타 {fmtM((m.fixed||0)-(m.fixedGroups["집세"]||0))}</span>
-              </div>
-              <div style={{ fontSize:8, color:"#888888", marginTop:3 }}>{open==="fixed"?"▲":"▼"} 세부</div>
+              <div style={{ fontSize:8, color:"#F04452", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>고정지출</div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#F04452" }}>{privacy?"●●●":fmtM(m.fixed)}</div>
+              <div style={{ fontSize:8, color:"#888888", marginTop:4 }}>{open==="fixed"?"▲":"▼"} 세부</div>
             </div>
             <div onClick={()=>toggle("variable")} style={{ background:open==="variable"?"#9b77c918":"#EDE8E3", border:`1px solid ${open==="variable"?"#8B5CF6":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
               <div style={{ fontSize:8, color:"#8B5CF6", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>변동지출</div>
-              <div style={{ fontSize:15, fontWeight:700, color:"#8B5CF6" }}>{fmtM(m.variable)}</div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#8B5CF6" }}>{privacy?"●●●":fmtM(m.variable)}</div>
               <div style={{ fontSize:8, color:"#888888", marginTop:4 }}>{open==="variable"?"▲":"▼"} 세부</div>
             </div>
           </div>
 
           {/* 세부내역 드로어 */}
-          {open==="income" && !privacy && (
+          {open==="income" && (
             <div style={{ marginBottom:8 }}>
               <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
-                {(() => {
-                  // C열 중분류 기준으로 그룹핑해서 표시
-                  const groups = {};
-                  Object.entries(raw.income).forEach(([k, arr]) => {
-                    const v = arr[selIdx] || 0;
-                    if (!v) return;
-                    const cKey = raw.incomeGroupKeys?.[k] || "기타";
-                    if (!groups[cKey]) groups[cKey] = [];
-                    groups[cKey].push({ k, v });
-                  });
-                  return Object.entries(groups).map(([cKey, items]) => (
-                    <div key={cKey} style={{ marginBottom:8 }}>
-                      <div style={{ fontSize:10, color:"#FF7E36", fontWeight:700, marginBottom:4, paddingBottom:3, borderBottom:"1px solid #FF7E3622" }}>
-                        {cKey}
-                      </div>
-                      {items.map(({k,v}) => (
-                        <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
-                          <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
-                        </div>
-                      ))}
+                {Object.entries(raw.income).map(([k,arr])=>{
+                  const v = arr[selIdx]||0;
+                  return v>0 ? (
+                    <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                      <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{privacy?"●●●":fmt(v)}</span>
                     </div>
-                  ));
-                })()}
+                  ) : null;
+                })}
               </div>
             </div>
           )}
           {open==="fixed" && (
             <div style={{ marginBottom:8 }}>
-              <DetailPanel groups={m.fixedGroups} raw={raw} monthIdx={selIdx} color="#F04452" privacy={false} isFixed={true} />
+              <DetailPanel groups={m.fixedGroups} src={{}} monthIdx={selIdx} color="#F04452" privacy={privacy} />
             </div>
           )}
           {open==="variable" && (
             <div style={{ marginBottom:8 }}>
-              <DetailPanel groups={m.varGroups} raw={raw} monthIdx={selIdx} color="#8B5CF6" privacy={false} isFixed={false} />
+              <DetailPanel groups={m.varGroups} src={{}} monthIdx={selIdx} color="#8B5CF6" privacy={privacy} />
             </div>
           )}
 
-          {/* 순이익 - privacy시 마스킹 */}
+          {/* 순이익 */}
           <NetCard label={`${m.month} 순이익`} net={m.순익} income={m.income.total} expense={m.fixed+m.variable} privacy={privacy} />
 
           {/* 총 순자산 */}
@@ -411,7 +342,7 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                 <div>
                   <div style={{ fontSize:9, color:"#888888", fontWeight:700, letterSpacing:.8, marginBottom:8 }}>총 순자산</div>
                   <div style={{ fontSize:24, fontWeight:700, color:netWorth>=0?"#00C471":"#F04452" }}>
-                    {(netWorth>=0?"+":"")+fmtM(netWorth)}
+                    {privacy?"●●●":(netWorth>=0?"+":"")+fmtM(netWorth)}
                   </div>
                 </div>
                 <div style={{ textAlign:"right" }}>
@@ -431,15 +362,15 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
             {open==="networth" && (
               <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px", marginTop:4 }}>
                 <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
-                  <span>🏠 실물자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{fmtM(totalPhysical)}</span>
+                  <span>🏠 실물자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{privacy?"●●●":fmtM(totalPhysical)}</span>
                 </div>
                 {totalFinancial > 0 && (
                   <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
-                    <span>📈 금융자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{fmtM(totalFinancial)}</span>
+                    <span>📈 금융자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{privacy?"●●●":fmtM(totalFinancial)}</span>
                   </div>
                 )}
                 <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#F04452", padding:"6px 0 2px", fontWeight:600 }}>
-                  <span>🏦 부채</span><span>{fmtM(totalDebt)}</span>
+                  <span>🏦 부채</span><span>{privacy?"●●●":fmtM(totalDebt)}</span>
                 </div>
               </div>
             )}
@@ -448,24 +379,21 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
 
         {/* 오른쪽: 차트 영역 */}
         <div className="desktop-right">
-          <TrendChart active={active} selIdx={selIdx} setSelIdx={setSelIdx} setOpen={setOpen} privacy={privacy} />
+          <TrendChart active={active} selIdx={selIdx} setSelIdx={setSelIdx} setOpen={setOpen} />
         </div>
       </div>
     </div>
   );
 }
 
-function TrendChart({ active, selIdx, setSelIdx, setOpen, privacy }) {
-  const ALL_LINES = [
-    { key:"수입",    color:"#FF7E36", sensitive: true },
-    { key:"고정지출", color:"#F04452", sensitive: false },
-    { key:"변동지출", color:"#8B5CF6", sensitive: false },
+function TrendChart({ active, selIdx, setSelIdx, setOpen }) {
+  const LINES = [
+    { key:"수입",    color:"#FF7E36" },
+    { key:"고정지출", color:"#F04452" },
+    { key:"변동지출", color:"#8B5CF6" },
   ];
-  // privacy 모드면 수입 탭 숨기기
-  const LINES = privacy ? ALL_LINES.filter(l => !l.sensitive) : ALL_LINES;
-  const [activeLine, setActiveLine] = useState("고정지출");
-  // privacy 켜질 때 수입 선택돼있으면 고정지출로 전환
-  const curLine = LINES.find(l=>l.key===activeLine) || LINES[0];
+  const [activeLine, setActiveLine] = useState("수입");
+  const cur = LINES.find(l=>l.key===activeLine);
 
   const lineData = active.map(a=>({
     name: a.month,
@@ -480,10 +408,10 @@ function TrendChart({ active, selIdx, setSelIdx, setOpen, privacy }) {
     return (
       <g key={`dot-${payload.name}`}>
         <circle cx={cx} cy={cy} r={isSelected?6:4}
-          fill={isSelected ? curLine.color : "#EDE8E3"}
-          stroke={curLine.color} strokeWidth={2} />
+          fill={isSelected ? cur.color : "#F5F0EB"}
+          stroke={cur.color} strokeWidth={2} />
         <text x={cx} y={cy-14} textAnchor="middle"
-          fontSize={8} fill={isSelected ? curLine.color : "#888888"} fontWeight={isSelected?700:400}>
+          fontSize={8} fill={isSelected ? cur.color : "#555555"} fontWeight={isSelected?700:400}>
           {fmtM(value)}
         </text>
       </g>
@@ -491,29 +419,29 @@ function TrendChart({ active, selIdx, setSelIdx, setOpen, privacy }) {
   };
 
   return (
-    <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
+    <div style={{ background:"#FFFFFF", border:"1px solid #1e1e38", borderRadius:14, padding:"14px 12px" }}>
       <div style={{ display:"flex", gap:6, marginBottom:14 }}>
         {LINES.map(l=>(
           <button key={l.key} onClick={()=>setActiveLine(l.key)} style={{
-            background: curLine.key===l.key ? `${l.color}22` : "transparent",
-            border: `1px solid ${curLine.key===l.key ? l.color : "#C8C3BE"}`,
-            borderRadius:8, color: curLine.key===l.key ? l.color : "#777777",
+            background: activeLine===l.key ? `${l.color}22` : "transparent",
+            border: `1px solid ${activeLine===l.key ? l.color : "#D5D5D5"}`,
+            borderRadius:8, color: activeLine===l.key ? l.color : "#555555",
             fontSize:11, padding:"4px 12px", cursor:"pointer",
-            fontFamily:"inherit", fontWeight: curLine.key===l.key ? 700 : 400,
+            fontFamily:"inherit", fontWeight: activeLine===l.key ? 700 : 400,
           }}>{l.key}</button>
         ))}
       </div>
       <ResponsiveContainer width="100%" height={230} className="chart-height-lg">
         <LineChart data={lineData} margin={{ top:30, right:16, left:16, bottom:0 }} onClick={d=>{ if(d?.activeLabel){ const i=MONTHS.indexOf(d.activeLabel); if(i>=0){ setSelIdx(i); setOpen(null); } } }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#EDEDED" />
           <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
           <YAxis hide />
           <RechartTooltip content={<TT />} />
           <Line
-            type="monotone" dataKey={curLine.key} name={curLine.key}
-            stroke={curLine.color} strokeWidth={2}
+            type="monotone" dataKey={activeLine} name={activeLine}
+            stroke={cur.color} strokeWidth={2}
             dot={<CustomDot />}
-            activeDot={{ r:7, fill:curLine.color, stroke:"#EDE8E3", strokeWidth:2 }}
+            activeDot={{ r:7, fill:cur.color, stroke:"#F5F0EB", strokeWidth:2 }}
           />
         </LineChart>
       </ResponsiveContainer>
@@ -522,11 +450,11 @@ function TrendChart({ active, selIdx, setSelIdx, setOpen, privacy }) {
 }
 
 
-function YearTab({ monthly, active, raw, privacy }) {
+function YearTab({ monthly, active, raw }) {
   const [open, setOpen] = useState(null);
   const toggle = key => setOpen(p=>p===key?null:key);
 
-  const totalIncome   = { total: sum(monthly.map(m=>m.income.total)) };
+  const totalIncome = { total: sum(monthly.map(m=>m.income.total)) };
   const totalFixed    = sum(monthly.map(m=>m.fixed));
   const totalVariable = sum(monthly.map(m=>m.variable));
   const totalNet      = sum(monthly.map(m=>m.순익));
@@ -534,78 +462,51 @@ function YearTab({ monthly, active, raw, privacy }) {
   const vg = raw.varGroups   || {};
   const yearFixedGroups = Object.fromEntries(Object.entries(fg).map(([g,arr])=>[g, sum(arr)]));
   const yearVarGroups   = Object.fromEntries(Object.entries(vg).map(([g,arr])=>[g, sum(arr)]));
-
-  // 차트 데이터: 수입 / 지출(고정+변동 합산)
-  const barData = active.map(a=>({
-    name: a.month,
-    수입: a.income.total,
-    지출: a.fixed + a.variable,
-  }));
+  const barData = active.map(a=>({ name:a.month, 수입:a.income.total, 고정지출:a.fixed, 변동지출:a.variable }));
 
   return (
     <div>
       <div style={{ fontSize:11, color:"#333333", marginBottom:14 }}>1~{active.length}월 누적 기준</div>
 
-      <AccordionCard label="총 수입" value={privacy?"●●●":totalIncome.total} color="#FF7E36" isOpen={open==="income"&&!privacy} onToggle={()=>!privacy&&toggle("income")}
+      <AccordionCard label="총 수입" value={totalIncome.total} color="#FF7E36" isOpen={open==="income"} onToggle={()=>toggle("income")}
         sub={<div style={{ fontSize:10, color:"#333333" }}>연간 합계</div>}>
-        <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
-          {(() => {
-            const groups = {};
-            Object.entries(raw.income).forEach(([k,arr]) => {
-              const v = sum(arr); if (!v) return;
-              const cKey = raw.incomeGroupKeys?.[k] || "기타";
-              if (!groups[cKey]) groups[cKey] = [];
-              groups[cKey].push({ k, v });
-            });
-            return Object.entries(groups).map(([cKey, items]) => (
-              <div key={cKey} style={{ marginBottom:8 }}>
-                <div style={{ fontSize:10, color:"#FF7E36", fontWeight:700, marginBottom:4, paddingBottom:3, borderBottom:"1px solid #FF7E3622" }}>{cKey}</div>
-                {items.map(({k,v}) => (
-                  <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
-                    <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
-                  </div>
-                ))}
-              </div>
-            ));
-          })()}
+        <div style={{ background:"#F5F0EB", border:"1px solid #e8c76a22", borderRadius:12, padding:"12px 14px" }}>
+          {Object.entries(raw.income).map(([k,arr])=>{ const v=sum(arr); if(!v) return null; return (
+            <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", padding:"4px 0", borderBottom:"1px solid #E8E0D8" }}>
+              <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
+            </div>
+          ); })}
         </div>
       </AccordionCard>
 
       <AccordionCard label="총 고정지출" value={totalFixed} color="#F04452" isOpen={open==="fixed"} onToggle={()=>toggle("fixed")}
         sub={<div style={{ fontSize:10, color:"#333333" }}>수입 대비 {totalIncome.total>0?(totalFixed/totalIncome.total*100).toFixed(0):"-"}%</div>}>
-        <DetailPanel groups={yearFixedGroups} raw={raw} monthIdx={null} color="#F04452" isFixed={true} />
+        <DetailPanel groups={yearFixedGroups} src={{}} monthIdx={null} color="#F04452" />
       </AccordionCard>
 
       <AccordionCard label="총 변동지출" value={totalVariable} color="#8B5CF6" isOpen={open==="variable"} onToggle={()=>toggle("variable")}
         sub={<div style={{ fontSize:10, color:"#333333" }}>수입 대비 {totalIncome.total>0?(totalVariable/totalIncome.total*100).toFixed(0):"-"}%</div>}>
-        <DetailPanel groups={yearVarGroups} raw={raw} monthIdx={null} color="#8B5CF6" isFixed={false} />
+        <DetailPanel groups={yearVarGroups} src={{}} monthIdx={null} color="#8B5CF6" />
       </AccordionCard>
 
-      <NetCard label="연간 순이익 (누적)" net={totalNet} income={totalIncome.total} expense={totalFixed+totalVariable} privacy={privacy} />
+      <NetCard label="연간 순이익 (누적)" net={totalNet} income={totalIncome.total} expense={totalFixed+totalVariable} />
 
-      <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
+      <div style={{ background:"#FFFFFF", border:"1px solid #1e1e38", borderRadius:14, padding:"14px 12px" }}>
         <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>월별 흐름</div>
-        <ResponsiveContainer width="100%" height={180}>
-          <LineChart data={barData} margin={{ top:24, right:16, left:16, bottom:0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" />
+        <ResponsiveContainer width="100%" height={150}>
+          <BarChart data={barData} barGap={2}>
             <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
             <YAxis hide />
             <RechartTooltip content={<TT />} />
-            {!privacy && (
-              <Line type="monotone" dataKey="수입" name="수입"
-                stroke="#FF7E36" strokeWidth={2} dot={false}
-                activeDot={{ r:5, fill:"#FF7E36", stroke:"#EDE8E3", strokeWidth:2 }}
-              />
-            )}
-            <Line type="monotone" dataKey="지출" name="지출"
-              stroke="#F04452" strokeWidth={2} dot={false}
-              activeDot={{ r:5, fill:"#F04452", stroke:"#EDE8E3", strokeWidth:2 }}
-            />
-          </LineChart>
+            <Bar dataKey="수입" fill="#FF7E3666" name="수입" radius={[3,3,0,0]} />
+            <Bar dataKey="고정지출" fill="#c96a6a66" name="고정지출" radius={[3,3,0,0]} />
+            <Bar dataKey="변동지출" fill="#8B5CF666" name="변동지출" radius={[3,3,0,0]} />
+          </BarChart>
         </ResponsiveContainer>
-        <div style={{ display:"flex", gap:12, justifyContent:"center", fontSize:10, color:"#444444", marginTop:6 }}>
-          {!privacy && <span><span style={{color:"#FF7E36"}}>■</span> 수입</span>}
-          <span><span style={{color:"#F04452"}}>■</span> 지출 (고정+변동)</span>
+        <div style={{ display:"flex", gap:12, justifyContent:"center", fontSize:10, color:"#444444", marginTop:4 }}>
+          <span><span style={{color:"#FF7E36"}}>■</span> 수입</span>
+          <span><span style={{color:"#F04452"}}>■</span> 고정지출</span>
+          <span><span style={{color:"#8B5CF6"}}>■</span> 변동지출</span>
         </div>
       </div>
     </div>
@@ -751,29 +652,11 @@ function InvestTab({ monthly, active, raw }) {
   const lastIdx = MONTHS.indexOf(active[active.length-1].month);
   const [selIdx, setSelIdx] = useState(lastIdx);
 
-  // 투자 = 주식(B열) + 코인(B열)만 — 비상금/저축 제외
-  // raw.assets는 C열 중분류 키로 저장됨
-  const INVEST_KEYS = ["주식", "코인"]; // B열 중분류명
-  // B열 중분류별로 그룹핑된 값 사용 (없으면 C열 전체)
-  // raw.assets에서 주식/코인 관련 항목만 필터
-  const investItems = Object.entries(raw.assets)
-    .filter(([k]) => {
-      // C열 소분류 기준 — 주식계좌, 코인 관련 항목
-      const lower = k.toLowerCase();
-      return lower.includes("연금") || lower.includes("배당") || lower.includes("투자") || lower.includes("코인") || lower.includes("토스") || lower.includes("주식");
-    })
-    .map(([k,arr]) => ({ k, v: arr[selIdx]||0 }))
-    .filter(x => x.v > 0);
-
-  const totalAsset = investItems.reduce((s,x)=>s+x.v, 0);
+  const assetItems = Object.entries(raw.assets).map(([k,arr])=>({ k, v:arr[selIdx]||0 })).filter(x=>x.v>0);
+  const totalAsset = assetItems.reduce((s,x)=>s+x.v,0);
   const prevSelIdx = selIdx - 1;
   const prevAsset  = prevSelIdx >= 0
-    ? Object.entries(raw.assets)
-        .filter(([k]) => {
-          const lower = k.toLowerCase();
-          return lower.includes("연금") || lower.includes("배당") || lower.includes("투자") || lower.includes("코인") || lower.includes("토스") || lower.includes("주식");
-        })
-        .reduce((s,[,arr])=>s+(arr[prevSelIdx]||0),0)
+    ? Object.entries(raw.assets).reduce((s,[,arr])=>s+(arr[prevSelIdx]||0),0)
     : null;
   const investGain = prevAsset !== null ? totalAsset - prevAsset : null;
 
@@ -788,58 +671,59 @@ function InvestTab({ monthly, active, raw }) {
         <div className="desktop-left">
           {/* 요약 카드 2개 */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
-            <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
-              <div style={{ fontSize:9, color:"#00C471", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>투자자산</div>
+            <div style={{ background:"#FFFFFF", border:"1px solid #6ac99733", borderRadius:14, padding:"14px 12px" }}>
+              <div style={{ fontSize:9, color:"#00C471", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>금융자산</div>
               <div style={{ fontSize:20, fontWeight:700, color:"#00C471" }}>{fmtM(totalAsset)}</div>
             </div>
-            <div style={{ background:"#EDE8E3", border:`1px solid ${investGain===null||investGain>=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 12px" }}>
-              <div style={{ fontSize:9, color:"#333333", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>전월 대비</div>
+            <div style={{ background:"#FFFFFF", border:`1px solid ${investGain===null||investGain>=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 12px" }}>
+              <div style={{ fontSize:9, color:"#333333", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>투자수익</div>
               <div style={{ fontSize:20, fontWeight:700, color:investGain===null?"#999999":investGain>=0?"#00C471":"#F04452" }}>
                 {investGain===null ? "-" : (investGain>=0?"+":"")+fmtM(investGain)}
               </div>
+              <div style={{ fontSize:9, color:"#444444", marginTop:4 }}>전월 대비</div>
             </div>
           </div>
 
           {/* 자산 항목별 */}
-          {investItems.length > 0 ? (
-            <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px", marginBottom:12 }}>
-              <div style={{ fontSize:10, color:"#00C471", fontWeight:700, marginBottom:12 }}>항목별</div>
-              {investItems.map(({k,v},i)=>{
+          {assetItems.length > 0 ? (
+            <div style={{ background:"#FFFFFF", border:"1px solid #6ac99722", borderRadius:14, padding:"14px", marginBottom:12 }}>
+              <div style={{ fontSize:10, color:"#00C471", fontWeight:700, marginBottom:12 }}>자산 항목별</div>
+              {assetItems.map(({k,v},i)=>{
                 const pct=totalAsset>0?(v/totalAsset*100).toFixed(0):0;
                 return (
                   <div key={k} style={{ marginBottom:12 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", marginBottom:4 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", marginBottom:4 }}>
                       <span>{k}</span><span style={{ fontWeight:700, color:"#00C471" }}>{fmt(v)}</span>
                     </div>
-                    <div style={{ width:"100%", height:5, background:"#D8D3CE", borderRadius:3 }}>
+                    <div style={{ width:"100%", height:5, background:"#EDEDED", borderRadius:3 }}>
                       <div style={{ width:`${pct}%`, height:"100%", background:AC[i%AC.length], borderRadius:3 }}/>
                     </div>
-                    <div style={{ fontSize:9, color:"#888888", marginTop:2 }}>{pct}%</div>
+                    <div style={{ fontSize:9, color:"#333333", marginTop:2 }}>{pct}%</div>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div style={{ background:"#EDE8E3", borderRadius:14, padding:"24px", textAlign:"center", marginBottom:12, color:"#888888", fontSize:12 }}>
-              이 달 투자 데이터 없음
+            <div style={{ background:"#FFFFFF", border:"1px solid #1e1e38", borderRadius:14, padding:"24px", textAlign:"center", marginBottom:12, color:"#444444", fontSize:12 }}>
+              이 달 자산 데이터 없음
             </div>
           )}
         </div>
 
         <div className="desktop-right">
-          {/* 투자자산 추이 */}
-          <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
-            <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>투자자산 추이</div>
+          {/* 금융자산 추이 — 선 그래프 */}
+          <div style={{ background:"#FFFFFF", border:"1px solid #1e1e38", borderRadius:14, padding:"14px 12px" }}>
+            <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>금융자산 추이</div>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={barData} onClick={d=>{ if(d?.activeLabel){ const i=MONTHS.indexOf(d.activeLabel); if(i>=0) setSelIdx(i); } }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#EDEDED" />
                 <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
                 <YAxis hide />
                 <RechartTooltip content={<TT />} />
                 <Line
-                  type="monotone" dataKey="금융자산" name="투자자산"
+                  type="monotone" dataKey="금융자산" name="금융자산"
                   stroke="#00C471" strokeWidth={2} dot={false}
-                  activeDot={{ r:5, fill:"#00C471", stroke:"#EDE8E3", strokeWidth:2 }}
+                  activeDot={{ r:5, fill:"#00C471", stroke:"#F5F0EB", strokeWidth:2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -885,18 +769,20 @@ function AlertTab({ monthly, active, raw, privacy }) {
   const C = { up:"#F04452", down:"#00C471", new:"#8B5CF6", border:"#DDD8D3" };
 
   const Row = ({ label, cur, prev, diff, color }) => {
-    const pct = prev > 0 ? Math.abs((diff/prev)*100).toFixed(0) : null;
+    const pct = prev > 0 ? ((diff/prev)*100).toFixed(0) : null;
     return (
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
-        <div style={{ flex:1 }}>
+        <div>
           <div style={{ fontSize:12, color:"#1A1A1A", fontWeight:500 }}>{label}</div>
           <div style={{ fontSize:10, color:"#888888", marginTop:2 }}>
             {prev > 0 ? `${fmtM(prev)} → ${fmtM(cur)}` : `신규 ${fmtM(cur)}`}
           </div>
         </div>
-        <div style={{ textAlign:"right", minWidth:70 }}>
-          <div style={{ fontSize:16, fontWeight:700, color }}>{fmtM(Math.abs(diff))}</div>
-          {pct && <div style={{ fontSize:9, color, marginTop:2 }}>{pct}%</div>}
+        <div style={{ textAlign:"right" }}>
+          <div style={{ fontSize:13, fontWeight:700, color }}>
+            {diff > 0 ? "+" : ""}{fmtM(diff)}
+          </div>
+          {pct && <div style={{ fontSize:9, color, marginTop:2 }}>{diff>0?"+":""}{pct}%</div>}
         </div>
       </div>
     );
@@ -908,27 +794,26 @@ function AlertTab({ monthly, active, raw, privacy }) {
 
       {/* 총 지출 변화 요약 */}
       <div style={{ background:"#EDE8E3", border:`1px solid ${totalDiff===null||totalDiff<=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
-        <div style={{ fontSize:9, color:"#888888", fontWeight:700, letterSpacing:.8, marginBottom:8 }}>총 지출 전월 대비</div>
+        <div style={{ fontSize:9, color:"#888888", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>총 지출 전월 대비</div>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
             {totalDiff === null ? (
-              <div style={{ fontSize:22, fontWeight:700, color:"#1A1A1A" }}>{fmtM(totalCur)}</div>
+              <div style={{ fontSize:20, fontWeight:700, color:"#1A1A1A" }}>{fmtM(totalCur)}</div>
             ) : (
               <>
-                <div style={{ fontSize:13, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471", marginBottom:4 }}>
-                  {totalDiff>0 ? spentMore : spentLess}
+                <div style={{ fontSize:20, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471" }}>
+                  {totalDiff>0?"+":""}{fmtM(totalDiff)}
                 </div>
-                <div style={{ fontSize:22, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471" }}>
-                  {fmtM(Math.abs(totalDiff))}
+                <div style={{ fontSize:12, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471", marginTop:4 }}>
+                  {totalDiff>0 ? spentMore : spentLess}
                 </div>
               </>
             )}
           </div>
           {totalDiff !== null && (
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontSize:10, color:"#888888", marginBottom:4 }}>이번 달 총 지출</div>
-              <div style={{ fontSize:18, fontWeight:700, color:"#1A1A1A" }}>{fmtM(totalCur)}</div>
-              <div style={{ fontSize:10, color:"#AAAAAA", marginTop:2 }}>전월 {fmtM(totalPrev)}</div>
+            <div style={{ textAlign:"right", fontSize:11, color:"#888888" }}>
+              <div>{fmtM(totalPrev)}</div>
+              <div style={{ fontSize:9, marginTop:2 }}>→ {fmtM(totalCur)}</div>
             </div>
           )}
         </div>
@@ -1121,78 +1006,10 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // ─────────────────────────────────────────────
 const CHANGELOG = [
   {
-    version: "1.4.3",
-    date: "2026-04-04",
-    items: [
-      "수입/고정/변동지출 세부내역 C열+D열 같이 표시",
-      "집세 통합 이중합산 버그 수정 (parseRows에서 통합 처리)",
-      "총 고정지출 계산 정확도 개선",
-    ],
-  },
-  {
-    version: "1.4.2",
-    date: "2026-04-04",
-    items: [
-      "세부내역 소분류 표시 버그 수정 (fixedGroupKeys 접근 오류)",
-      "지출 알림 총액 카드 - 부호 제거, 총액 크게 표시",
-    ],
-  },
-  {
-    version: "1.4.1",
-    date: "2026-04-04",
-    items: [
-      "중분류 이중집계 버그 수정 (통신비 등 소분류 합산 오류)",
-      "연간 탭 월별 흐름 - 수입/지출 라인차트로 변경",
-      "연간 탭 총 고정지출 계산 수정",
-    ],
-  },
-  {
-    version: "1.4.0",
-    date: "2026-04-04",
-    items: [
-      "PWA 앱 아이콘 적용 (홈화면 추가 지원)",
-      "투자 탭 - 주식/코인만 투자자산으로 계산",
-    ],
-  },
-  {
-    version: "1.3.0",
-    date: "2026-04-04",
-    items: [
-      "세부내역 - 중분류/소분류 모두 표시",
-      "고정지출 카드 - 집세/기타 분리 표시",
-      "지출 알림 Row - +/- 제거, 금액 크게",
-    ],
-  },
-  {
-    version: "1.1.3",
-    date: "2026-04-04",
-    items: [
-      "부채/금융자산/실물자산 C열 기준 파싱으로 수정",
-      "투자수익 등 계산행 집계 제외",
-      "파싱 로직 단순화 - 합계 행만 스킵",
-    ],
-  },
-  {
-    version: "1.1.2",
-    date: "2026-04-04",
-    items: [
-      "합계 행 이중집계 버그 수정",
-      "집세 별도 합계 행 제거 - 주거+집 관리비 통합",
-    ],
-  },
-  {
-    version: "1.1.1",
-    date: "2026-04-04",
-    items: [
-      "C열 중분류 기준 집계 방식 수정",
-      "FIXED_GROUPS/VAR_GROUPS 하드코딩 완전 제거",
-    ],
-  },
-  {
     version: "1.1.0",
     date: "2026-04-04",
     items: [
-      "민감정보 가리기 기능 추가",
+      "민감정보 가리기 탭 추가",
       "지출 알림 문구 개선 (더 썼어요 / 덜 썼어요)",
       "카드 배경색 개선",
       "업데이트 로그 UI 소형화",
@@ -1203,6 +1020,7 @@ const CHANGELOG = [
     date: "2026-04-04",
     items: [
       "A열 구분 기준 동적 파싱 (행 번호 하드코딩 완전 제거)",
+      "C열 중분류 기준 그룹핑 동적 생성",
       "목업 문구 제거, 스크롤바 숨기기",
       "업데이트 로그 패널 추가",
     ],
