@@ -709,11 +709,29 @@ function InvestTab({ monthly, active, raw }) {
   const lastIdx = MONTHS.indexOf(active[active.length-1].month);
   const [selIdx, setSelIdx] = useState(lastIdx);
 
-  const assetItems = Object.entries(raw.assets).map(([k,arr])=>({ k, v:arr[selIdx]||0 })).filter(x=>x.v>0);
-  const totalAsset = assetItems.reduce((s,x)=>s+x.v,0);
+  // 투자 = 주식(B열) + 코인(B열)만 — 비상금/저축 제외
+  // raw.assets는 C열 중분류 키로 저장됨
+  const INVEST_KEYS = ["주식", "코인"]; // B열 중분류명
+  // B열 중분류별로 그룹핑된 값 사용 (없으면 C열 전체)
+  // raw.assets에서 주식/코인 관련 항목만 필터
+  const investItems = Object.entries(raw.assets)
+    .filter(([k]) => {
+      // C열 소분류 기준 — 주식계좌, 코인 관련 항목
+      const lower = k.toLowerCase();
+      return lower.includes("연금") || lower.includes("배당") || lower.includes("투자") || lower.includes("코인") || lower.includes("토스") || lower.includes("주식");
+    })
+    .map(([k,arr]) => ({ k, v: arr[selIdx]||0 }))
+    .filter(x => x.v > 0);
+
+  const totalAsset = investItems.reduce((s,x)=>s+x.v, 0);
   const prevSelIdx = selIdx - 1;
   const prevAsset  = prevSelIdx >= 0
-    ? Object.entries(raw.assets).reduce((s,[,arr])=>s+(arr[prevSelIdx]||0),0)
+    ? Object.entries(raw.assets)
+        .filter(([k]) => {
+          const lower = k.toLowerCase();
+          return lower.includes("연금") || lower.includes("배당") || lower.includes("투자") || lower.includes("코인") || lower.includes("토스") || lower.includes("주식");
+        })
+        .reduce((s,[,arr])=>s+(arr[prevSelIdx]||0),0)
     : null;
   const investGain = prevAsset !== null ? totalAsset - prevAsset : null;
 
@@ -728,59 +746,58 @@ function InvestTab({ monthly, active, raw }) {
         <div className="desktop-left">
           {/* 요약 카드 2개 */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
-            <div style={{ background:"#FFFFFF", border:"1px solid #6ac99733", borderRadius:14, padding:"14px 12px" }}>
-              <div style={{ fontSize:9, color:"#00C471", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>금융자산</div>
+            <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
+              <div style={{ fontSize:9, color:"#00C471", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>투자자산</div>
               <div style={{ fontSize:20, fontWeight:700, color:"#00C471" }}>{fmtM(totalAsset)}</div>
             </div>
-            <div style={{ background:"#FFFFFF", border:`1px solid ${investGain===null||investGain>=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 12px" }}>
-              <div style={{ fontSize:9, color:"#333333", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>투자수익</div>
+            <div style={{ background:"#EDE8E3", border:`1px solid ${investGain===null||investGain>=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 12px" }}>
+              <div style={{ fontSize:9, color:"#333333", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>전월 대비</div>
               <div style={{ fontSize:20, fontWeight:700, color:investGain===null?"#999999":investGain>=0?"#00C471":"#F04452" }}>
                 {investGain===null ? "-" : (investGain>=0?"+":"")+fmtM(investGain)}
               </div>
-              <div style={{ fontSize:9, color:"#444444", marginTop:4 }}>전월 대비</div>
             </div>
           </div>
 
           {/* 자산 항목별 */}
-          {assetItems.length > 0 ? (
-            <div style={{ background:"#FFFFFF", border:"1px solid #6ac99722", borderRadius:14, padding:"14px", marginBottom:12 }}>
-              <div style={{ fontSize:10, color:"#00C471", fontWeight:700, marginBottom:12 }}>자산 항목별</div>
-              {assetItems.map(({k,v},i)=>{
+          {investItems.length > 0 ? (
+            <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px", marginBottom:12 }}>
+              <div style={{ fontSize:10, color:"#00C471", fontWeight:700, marginBottom:12 }}>항목별</div>
+              {investItems.map(({k,v},i)=>{
                 const pct=totalAsset>0?(v/totalAsset*100).toFixed(0):0;
                 return (
                   <div key={k} style={{ marginBottom:12 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", marginBottom:4 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", marginBottom:4 }}>
                       <span>{k}</span><span style={{ fontWeight:700, color:"#00C471" }}>{fmt(v)}</span>
                     </div>
-                    <div style={{ width:"100%", height:5, background:"#EDEDED", borderRadius:3 }}>
+                    <div style={{ width:"100%", height:5, background:"#D8D3CE", borderRadius:3 }}>
                       <div style={{ width:`${pct}%`, height:"100%", background:AC[i%AC.length], borderRadius:3 }}/>
                     </div>
-                    <div style={{ fontSize:9, color:"#333333", marginTop:2 }}>{pct}%</div>
+                    <div style={{ fontSize:9, color:"#888888", marginTop:2 }}>{pct}%</div>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div style={{ background:"#FFFFFF", border:"1px solid #1e1e38", borderRadius:14, padding:"24px", textAlign:"center", marginBottom:12, color:"#444444", fontSize:12 }}>
-              이 달 자산 데이터 없음
+            <div style={{ background:"#EDE8E3", borderRadius:14, padding:"24px", textAlign:"center", marginBottom:12, color:"#888888", fontSize:12 }}>
+              이 달 투자 데이터 없음
             </div>
           )}
         </div>
 
         <div className="desktop-right">
-          {/* 금융자산 추이 — 선 그래프 */}
-          <div style={{ background:"#FFFFFF", border:"1px solid #1e1e38", borderRadius:14, padding:"14px 12px" }}>
-            <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>금융자산 추이</div>
+          {/* 투자자산 추이 */}
+          <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
+            <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>투자자산 추이</div>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={barData} onClick={d=>{ if(d?.activeLabel){ const i=MONTHS.indexOf(d.activeLabel); if(i>=0) setSelIdx(i); } }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#EDEDED" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" />
                 <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
                 <YAxis hide />
                 <RechartTooltip content={<TT />} />
                 <Line
-                  type="monotone" dataKey="금융자산" name="금융자산"
+                  type="monotone" dataKey="금융자산" name="투자자산"
                   stroke="#00C471" strokeWidth={2} dot={false}
-                  activeDot={{ r:5, fill:"#00C471", stroke:"#F5F0EB", strokeWidth:2 }}
+                  activeDot={{ r:5, fill:"#00C471", stroke:"#EDE8E3", strokeWidth:2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -1060,6 +1077,14 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.4.0",
+    date: "2026-04-04",
+    items: [
+      "PWA 앱 아이콘 적용 (홈화면 추가 지원)",
+      "투자 탭 - 주식/코인만 투자자산으로 계산",
+    ],
+  },
   {
     version: "1.3.0",
     date: "2026-04-04",
