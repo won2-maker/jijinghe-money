@@ -31,16 +31,13 @@ function parseNum(s) {
 }
 
 // Apps Script에서 받은 2D 배열(rows)을 파싱
-// A열 구분, B열 대분류, C열 중분류 기준으로 동적 파싱 — 행 번호 하드코딩 없음
 function parseRows(rows) {
 
-  // 월별 값 추출 (col 4~15 = 1월~12월)
   const getMonthly = (rowIdx) => {
     const r = rows[rowIdx] || [];
     return Array.from({length:12}, (_,i) => parseNum(r[4+i]));
   };
 
-  // 월별 배열 합산 유틸
   const addMonthly = (target, key, rowIdx) => {
     const vals = getMonthly(rowIdx);
     if (!target[key]) target[key] = Array(12).fill(0);
@@ -68,35 +65,35 @@ function parseRows(rows) {
     if (bRaw) lastB = bRaw;
     if (cRaw) lastC = cRaw;
 
-    // ── 스킵 조건 ──
-    // 1) D열 소분류가 비어있는 행 = 합계/그룹 행 → 스킵
-    if (!dCol) return;
-    // 2) A~D열 어디든 "합계" 텍스트 포함 → 스킵
+    // "합계" 포함 행 스킵
     if ([aRaw,bRaw,cRaw,dCol].some(v => v.includes("합계"))) return;
-    // 3) B열 대분류가 "합계"인 섹션 → 스킵
-    if (lastB.includes("합계")) return;
-    // 4) C열 중분류가 "합계"인 행 → 스킵
-    if (lastC.includes("합계")) return;
+    if (lastB.includes("합계") || lastC.includes("합계")) return;
 
-    if (lastA === "수익") {
-      addMonthly(income, dCol, i);
+    // ── 수익/고정지출/변동지출: D열이 항목명 ──
+    if (lastA === "수익" || lastA === "지출") {
+      if (!dCol) return; // D열 없으면 스킵
+      if (lastA === "수익") {
+        addMonthly(income, dCol, i);
+      } else if (lastB === "고정지출") {
+        addMonthly(fixedByItem, dCol, i);
+        if (lastC) addMonthly(fixedGroups, lastC, i);
+      } else if (lastB === "변동지출") {
+        addMonthly(variableByItem, dCol, i);
+        if (lastC) addMonthly(varGroups, lastC, i);
+      }
+      return;
+    }
 
-    } else if (lastA === "지출" && lastB === "고정지출") {
-      addMonthly(fixedByItem, dCol, i);
-      if (lastC) addMonthly(fixedGroups, lastC, i);
-
-    } else if (lastA === "지출" && lastB === "변동지출") {
-      addMonthly(variableByItem, dCol, i);
-      if (lastC) addMonthly(varGroups, lastC, i);
-
-    } else if (lastA === "부채") {
-      addMonthly(debt, dCol, i);
-
+    // ── 부채/금융자산/실물자산: C열이 항목명, D열은 세부용도(스킵 안함) ──
+    if (lastA === "부채") {
+      if (!lastC) return;
+      addMonthly(debt, lastC, i);
     } else if (lastA === "금융자산") {
-      addMonthly(assets, dCol, i);
-
+      if (!lastC) return;
+      addMonthly(assets, lastC, i);
     } else if (lastA === "실물자산") {
-      addMonthly(physicalAssets, dCol, i);
+      if (!lastC) return;
+      addMonthly(physicalAssets, lastC, i);
     }
   });
 
