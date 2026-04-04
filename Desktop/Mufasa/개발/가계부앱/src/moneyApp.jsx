@@ -1196,6 +1196,13 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // ─────────────────────────────────────────────
 const CHANGELOG = [
   {
+    version: "1.6.3",
+    date: "2026-04-04",
+    items: [
+      "헤더 행 스킵으로 고정지출 이중집계 수정",
+    ],
+  },
+  {
     version: "1.6.2",
     date: "2026-04-04",
     items: [
