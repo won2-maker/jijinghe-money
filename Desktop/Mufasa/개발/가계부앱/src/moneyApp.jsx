@@ -1260,6 +1260,14 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // ─────────────────────────────────────────────
 const CHANGELOG = [
   {
+    version: "1.6.5",
+    date: "2026-04-04",
+    items: [
+      "소분류 1개인 중분류 헤더 없이 한 줄로 표시",
+      "수입 세부내역 동일하게 적용",
+    ],
+  },
+  {
     version: "1.6.4",
     date: "2026-04-04",
     items: [
