@@ -284,7 +284,7 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
           .filter(([,g]) => g === group)
           .map(([uKey]) => ({
             uKey,
-            label: uKey.includes("::") ? uKey.split("::").slice(1).join(" ") : uKey, // 소분류 이름만
+            label: uKey.includes("::") ? uKey.replace("::", ": ") : uKey, // 중분류: 소분류 표시
             v: monthIdx !== null
               ? (src[uKey]?.[monthIdx] || 0)
               : (src[uKey] || []).reduce((a,b)=>a+b, 0)
@@ -412,7 +412,7 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                       return v > 0 && (raw.incomeBGroup?.[uKey]||"") !== "급여";
                     })
                     .map(([uKey, arr]) => ({
-                      label: uKey.includes("::") ? uKey.split("::").slice(1).join(" ") : uKey,
+                      label: uKey.includes("::") ? uKey.replace("::", ": ") : uKey,
                       v: arr[selIdx]||0
                     }));
                   return (
@@ -607,7 +607,7 @@ function YearTab({ monthly, active, raw, privacy }) {
             Object.entries(raw.income).forEach(([uKey,arr]) => {
               const v = sum(arr); if (!v) return;
               const cKey = raw.incomeGroupKeys?.[uKey] || "기타";
-              const label = uKey.includes("::") ? uKey.split("::").slice(1).join(" ") : uKey;
+              const label = uKey.includes("::") ? uKey.replace("::", ": ") : uKey;
               if (!groups[cKey]) groups[cKey] = [];
               groups[cKey].push({ label, v });
             });
@@ -935,10 +935,11 @@ function AlertTab({ monthly, active, raw, privacy }) {
 
   const allSrc = { ...raw.fixed, ...raw.variable };
   const items = Object.entries(allSrc).map(([k, arr]) => {
-    const cur  = arr[selIdx]  || 0;
-    const prev = prevIdx >= 0 ? (arr[prevIdx] || 0) : 0;
-    const diff = cur - prev;
-    return { k, cur, prev, diff };
+    const cur   = arr[selIdx]  || 0;
+    const prev  = prevIdx >= 0 ? (arr[prevIdx] || 0) : 0;
+    const diff  = cur - prev;
+    const label = k.includes("::") ? k.replace("::", ": ") : k;
+    return { k, label, cur, prev, diff };
   });
 
   const increased = items.filter(x => x.diff > 0 && x.cur > 0).sort((a,b) => b.diff - a.diff);
@@ -1014,19 +1015,19 @@ function AlertTab({ monthly, active, raw, privacy }) {
           {increased.length > 0 && (
             <div style={{ background:"#EDE8E3", border:"1px solid #F0445222", borderRadius:14, padding:"14px", marginBottom:10 }}>
               <div style={{ fontSize:10, color:"#F04452", fontWeight:700, marginBottom:4 }}>📈 늘어난 지출 ({increased.length}개)</div>
-              {increased.map(x => <Row key={x.k} label={x.k} cur={x.cur} prev={x.prev} diff={x.diff} color={C.up} />)}
+              {increased.map(x => <Row key={x.k} label={x.label} cur={x.cur} prev={x.prev} diff={x.diff} color={C.up} />)}
             </div>
           )}
           {newItems.length > 0 && (
             <div style={{ background:"#EDE8E3", border:"1px solid #8B5CF633", borderRadius:14, padding:"14px", marginBottom:10 }}>
               <div style={{ fontSize:10, color:"#8B5CF6", fontWeight:700, marginBottom:4 }}>🆕 이번 달 새로 생긴 지출 ({newItems.length}개)</div>
-              {newItems.map(x => <Row key={x.k} label={x.k} cur={x.cur} prev={0} diff={x.diff} color={C.new} />)}
+              {newItems.map(x => <Row key={x.k} label={x.label} cur={x.cur} prev={0} diff={x.diff} color={C.new} />)}
             </div>
           )}
           {decreased.length > 0 && (
             <div style={{ background:"#EDE8E3", border:"1px solid #00C47122", borderRadius:14, padding:"14px", marginBottom:10 }}>
               <div style={{ fontSize:10, color:"#00C471", fontWeight:700, marginBottom:4 }}>📉 줄어든 지출 ({decreased.length}개)</div>
-              {decreased.map(x => <Row key={x.k} label={x.k} cur={x.cur} prev={x.prev} diff={x.diff} color={C.down} />)}
+              {decreased.map(x => <Row key={x.k} label={x.label} cur={x.cur} prev={x.prev} diff={x.diff} color={C.down} />)}
             </div>
           )}
           {increased.length === 0 && newItems.length === 0 && (
@@ -1191,6 +1192,14 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.6.2",
+    date: "2026-04-04",
+    items: [
+      "탭 이름 변경: 지출 알림 → 지출 분석",
+      "항목명 표시 :: → : 로 변경 (생활비: 혜지 카드(KB) - 장보기)",
+    ],
+  },
   {
     version: "1.6.1",
     date: "2026-04-04",
@@ -1445,7 +1454,7 @@ export default function App() {
     { id:"year",    label:"전체" },
     { id:"debt",    label:"부채" },
     { id:"invest",  label:"투자" },
-    { id:"alert",   label:"지출 알림" },
+    { id:"alert",   label:"지출 분석" },
   ];
 
   const timeStr = lastSync
