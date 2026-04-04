@@ -31,6 +31,7 @@ function parseNum(s) {
 }
 
 // Apps Script에서 받은 2D 배열(rows)을 파싱
+// A열 구분, B열 대분류 기준으로 동적 파싱 — 행 번호 하드코딩 없음
 function parseRows(rows) {
 
   // 월별 값 추출 (col 4~15 = 1월~12월)
@@ -39,138 +40,80 @@ function parseRows(rows) {
     return Array.from({length:12}, (_,i) => parseNum(r[4+i]));
   };
 
-  // 소분류(D열=col3) 기준으로 행 찾기
-  const findRow = (label) => rows.findIndex(r => {
-    const cell = (r[3]||r[2]||"").replace(/\s/g,"");
-    return cell.includes(label.replace(/\s/g,""));
-  });
+  const income        = {};
+  const fixed         = {};
+  const variable      = {};
+  const debt          = {};
+  const assets        = {};
+  const physicalAssets= {};
 
-  // 구분(A열) + 대분류(B) + 중분류(C) + 소분류(D) 기준 탐색
-  const findRowBy = (colIdx, label) => rows.findIndex(r =>
-    (r[colIdx]||"").replace(/\s/g,"").includes(label.replace(/\s/g,""))
-  );
+  // 행 합치기 대응: 마지막으로 읽은 A, B열 값을 유지
+  let lastA = "";
+  let lastB = "";
 
-  // ── 수입 ──
-  // row 2(idx2)=헤더, idx3=급여원중(원종), idx4=급여혜지(폐지), idx5=기타
-  const income = {
-    "급여 (원중)": getMonthly(2),  // row3
-    "급여 (혜지)": getMonthly(3),  // row4
-    "기타 수익":   getMonthly(4),  // row5
-  };
+  rows.forEach((row, i) => {
+    const aRaw = String(row[0] || "").trim();
+    const bRaw = String(row[1] || "").trim();
+    const dCol = String(row[3] || "").trim(); // 소분류(항목명)
 
-  // ── 고정지출 행 매핑 (소분류 D열 기준, 1-indexed → 0-indexed)
-  // 스프레드시트 이미지 기준 행번호
-  const fixedRowMap = {
-    "교통비":          10,  // row11
-    "물돈":            12,  // row13 (원중)
-    "보험":            14,  // row15 (원중)
-    "통신비":          17,  // row18 (원중본)
-    "계모임":          20,  // row21 (원중)
-    "생활비카드":      21,  // row22
-    "카드부 상환":     24,  // row25
-    "집대출 (원중)":   27,  // row28 (원증신한대출35)
-    "집세 (신한은행)": 37,  // row38 (집세신한은행)
-    "가스":            32,  // row33 전기세
-    "가스비":          34,  // row35
-    "관리비":          35,  // row36
-    "수도세":          36,  // row37
-  };
-  const fixed = {};
-  for (const [k,ri] of Object.entries(fixedRowMap)) {
-    fixed[k] = getMonthly(ri);
-  }
+    if (aRaw) lastA = aRaw;
+    if (bRaw) lastB = bRaw;
 
-  // ── 변동지출
-  const varRowMap = {
-    "주거 원중대출(35%)": 27,
-    "주거 혜지대출(14%)": 28,
-    "원중 하나비상금":    29,
-    "원중 카카오":        30,
-    "원중 신한비상금":    31,
-    "혜지 카카오비상금":  32,
-    "자동차 유지비":      39,
-    "자동차 정비":        40,
-    "자동차 보험료":      41,
-    "자동차 톨비":        42,
-    "자동차 과태료":      43,
-    "의료비":             44,
-    "경조사":             45,
-    "명절":               48,
-    "여행경비":           49,
-    "구독서비스":         50,
-    "미용":               51,
-    "물품구매":           52,
-    "운동":               54,
-    "이동교통비":         55,
-    "기타":               56,
-  };
-  const variable = {};
-  for (const [k,ri] of Object.entries(varRowMap)) {
-    variable[k] = getMonthly(ri);
-  }
+    // 합계 행 스킵
+    if (lastB.includes("합계") || dCol.includes("합계")) return;
+    // 항목명 없으면 스킵
+    if (!dCol) return;
 
-  // ── 부채 (row 75~83 → idx 74~82)
-  const debtRowMap = {
-    "신담은행(기금)": 74,
-    "원중 IBS":       76,
-    "원중 우리":      77,
-    "원중 신한":      78,
-    "원중 하나":      79,
-    "원중 카카오":    80,
-    "혜지 카카오":    81,
-  };
-  const debt = {};
-  for (const [k,ri] of Object.entries(debtRowMap)) {
-    debt[k] = getMonthly(ri);
-  }
-
-  // ── 금융자산 (row 84~93 → idx 83~92)
-  const assetRowMap = {
-    "연금저축": 83,
-    "배당주":   84,
-    "원금투자": 85,
-    "잔여코인": 88,
-  };
-  const assets = {};
-  for (const [k,ri] of Object.entries(assetRowMap)) {
-    assets[k] = getMonthly(ri);
-  }
-
-  // ── 실물자산: A열 "실물자산" 텍스트로 위치 동적 탐색
-  // 행이 추가/이동돼도 A열 구분값 기준으로 찾으므로 행 번호 무관
-  const physicalAssets = {};
-  const physStartIdx = findRowBy(0, "실물자산");
-  if (physStartIdx !== -1) {
-    for (let i = physStartIdx + 1; i < rows.length; i++) {
-      const aCol = (rows[i][0] || "").trim(); // A열 구분
-      const bCol = (rows[i][1] || "").trim(); // B열 대분류
-      const dCol = (rows[i][3] || "").trim(); // D열 소분류(항목명)
-      // A열에 다른 구분값이 나타나면 섹션 종료
-      if (aCol && aCol !== "실물자산") break;
-      // 합계 행 스킵
-      if (bCol.includes("합계") || dCol.includes("합계")) continue;
-      // 항목명 없으면 스킵
-      if (!dCol) continue;
+    if (lastA === "수익") {
+      income[dCol] = getMonthly(i);
+    } else if (lastA === "지출" && lastB === "고정지출") {
+      fixed[dCol] = getMonthly(i);
+    } else if (lastA === "지출" && lastB === "변동지출") {
+      variable[dCol] = getMonthly(i);
+    } else if (lastA === "부채") {
+      debt[dCol] = getMonthly(i);
+    } else if (lastA === "금융자산") {
+      assets[dCol] = getMonthly(i);
+    } else if (lastA === "실물자산") {
       physicalAssets[dCol] = getMonthly(i);
     }
-  }
+  });
 
   return { income, fixed, variable, debt, assets, physicalAssets };
 }
 
 // ─────────────────────────────────────────────
-// 고정 그룹핑 정의
+// 그룹핑: 시트 C열(중분류) 기준으로 동적 생성
 // ─────────────────────────────────────────────
-const FIXED_GROUPS = {
-  "주거 대출":  ["집대출 (원중)","집세 (신한은행)"],
-  "집 관리비":  ["가스","가스비","관리비","수도세"],
-  "생활 고정":  ["교통비","물돈","보험","통신비","계모임","생활비카드","카드부 상환"],
-};
-const VAR_GROUPS = {
-  "주거":        ["주거 원중대출(35%)","주거 혜지대출(14%)","원중 하나비상금","원중 카카오","원중 신한비상금","혜지 카카오비상금"],
-  "자동차·의료": ["자동차 유지비","자동차 정비","자동차 보험료","자동차 톨비","자동차 과태료","의료비"],
-  "생활비":      ["경조사","명절","여행경비","구독서비스","미용","물품구매","운동","이동교통비","기타"],
-};
+function buildGroups(raw, rows) {
+  // C열 중분류 → D열 소분류 매핑 동적 생성
+  const fixedGroups  = {};
+  const varGroups    = {};
+  let lastA = "", lastB = "", lastC = "";
+
+  rows.forEach(row => {
+    const aRaw = String(row[0] || "").trim();
+    const bRaw = String(row[1] || "").trim();
+    const cRaw = String(row[2] || "").trim();
+    const dCol = String(row[3] || "").trim();
+
+    if (aRaw) lastA = aRaw;
+    if (bRaw) lastB = bRaw;
+    if (cRaw) lastC = cRaw;
+
+    if (!dCol || dCol.includes("합계") || lastB.includes("합계")) return;
+
+    if (lastA === "지출" && lastB === "고정지출" && lastC) {
+      if (!fixedGroups[lastC]) fixedGroups[lastC] = [];
+      if (!fixedGroups[lastC].includes(dCol)) fixedGroups[lastC].push(dCol);
+    } else if (lastA === "지출" && lastB === "변동지출" && lastC) {
+      if (!varGroups[lastC]) varGroups[lastC] = [];
+      if (!varGroups[lastC].includes(dCol)) varGroups[lastC].push(dCol);
+    }
+  });
+
+  return { fixedGroups, varGroups };
+}
 
 // ─────────────────────────────────────────────
 // 헬퍼
@@ -180,14 +123,15 @@ const fwIdx  = (keys,src,i) => keys.reduce((s,k)=>s+(src[k]?.[i]||0),0);
 const fwAll  = (keys,src)   => keys.reduce((s,k)=>s+sum(src[k]),0);
 
 function buildMonthly(raw) {
+  const fg = raw.fixedGroups  || {};
+  const vg = raw.varGroups    || {};
   return MONTHS.map((month,i) => {
-    const 급여 = (raw.income["급여 (원중)"]?.[i]||0)+(raw.income["급여 (혜지)"]?.[i]||0);
-    const 기타 = raw.income["기타 수익"]?.[i]||0;
-    const income   = { 급여, 기타, total:급여+기타 };
+    const incomeTotal = Object.values(raw.income).reduce((s,a)=>s+(a[i]||0),0);
+    const income   = { total: incomeTotal };
     const fixed    = Object.values(raw.fixed).reduce((s,a)=>s+(a[i]||0),0);
     const variable = Object.values(raw.variable).reduce((s,a)=>s+(a[i]||0),0);
-    const fixedGroups = Object.fromEntries(Object.entries(FIXED_GROUPS).map(([g,ks])=>[g,fwIdx(ks,raw.fixed,i)]));
-    const varGroups   = Object.fromEntries(Object.entries(VAR_GROUPS).map(([g,ks])=>[g,fwIdx(ks,raw.variable,i)]));
+    const fixedGroups = Object.fromEntries(Object.entries(fg).map(([g,ks])=>[g,fwIdx(ks,raw.fixed,i)]));
+    const varGroups   = Object.fromEntries(Object.entries(vg).map(([g,ks])=>[g,fwIdx(ks,raw.variable,i)]));
     const totalDebt     = Object.values(raw.debt).reduce((s,a)=>s+(a[i]||0),0);
     const totalAsset    = Object.values(raw.assets).reduce((s,a)=>s+(a[i]||0),0);
     const totalPhysical = Object.values(raw.physicalAssets||{}).reduce((s,a)=>s+(a[i]||0),0);
@@ -325,7 +269,7 @@ function NetCard({ label, net, income, expense }) {
 // ─────────────────────────────────────────────
 // 탭: 월별
 // ─────────────────────────────────────────────
-function MonthlyTab({ monthly, active, totalPhysicalByMonth, totalDebtByMonth }) {
+function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMonth }) {
   const lastIdx = MONTHS.indexOf(active[active.length-1].month);
   const [selIdx, setSelIdx] = useState(lastIdx);
   const [open, setOpen]     = useState(null);
@@ -376,9 +320,14 @@ function MonthlyTab({ monthly, active, totalPhysicalByMonth, totalDebtByMonth })
           {open==="income" && (
             <div style={{ marginBottom:8 }}>
               <div style={{ background:"#F5F0EB", border:"1px solid #e8c76a22", borderRadius:12, padding:"12px 14px" }}>
-                {[["급여 (원중)", m.income.급여/2],["급여 (혜지)", m.income.급여/2],["기타 수익", m.income.기타]].map(([k,v])=>
-                  v>0 ? <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", padding:"4px 0", borderBottom:"1px solid #E8E0D8" }}><span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span></div> : null
-                )}
+                {Object.entries(raw.income).map(([k,arr])=>{
+                  const v = arr[selIdx]||0;
+                  return v>0 ? (
+                    <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", padding:"4px 0", borderBottom:"1px solid #E8E0D8" }}>
+                      <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
+                    </div>
+                  ) : null;
+                })}
               </div>
             </div>
           )}
@@ -1049,6 +998,75 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
   );
 }
 
+// ─────────────────────────────────────────────
+// 업데이트 로그
+// ─────────────────────────────────────────────
+const CHANGELOG = [
+  {
+    version: "1.0.0",
+    date: "2026-04-04",
+    items: [
+      "구글 시트 연동 (Apps Script 중계)",
+      "월별·연간·부채·투자·지출알림 탭",
+      "실물자산 시트 연동 및 순자산 계산",
+      "A열 구분 기준 동적 파싱 (행 번호 하드코딩 제거)",
+      "반응형 레이아웃 (모바일/태블릿/데스크탑)",
+      "Vercel 배포",
+    ],
+  },
+];
+
+function ChangelogPanel() {
+  const [expanded, setExpanded] = useState(false);
+  const latest   = CHANGELOG[0];
+  const older    = CHANGELOG.slice(1);
+
+  return (
+    <div style={{ margin:"32px 0 8px", borderTop:"1px solid #E8E0D8", paddingTop:20 }}>
+      <div style={{ fontSize:10, color:"#AAAAAA", fontWeight:700, letterSpacing:.8, marginBottom:12 }}>업데이트 기록</div>
+
+      {/* 최신 버전 */}
+      <div style={{ background:"#FFFFFF", border:"1px solid #FF7E3622", borderRadius:12, padding:"12px 14px", marginBottom:8 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+          <span style={{ fontSize:12, fontWeight:700, color:"#FF7E36" }}>v{latest.version}</span>
+          <span style={{ fontSize:10, color:"#AAAAAA" }}>{latest.date}</span>
+        </div>
+        {latest.items.map((item,i)=>(
+          <div key={i} style={{ fontSize:11, color:"#555555", padding:"3px 0", borderBottom: i<latest.items.length-1?"1px solid #F5F0EB":"none" }}>
+            · {item}
+          </div>
+        ))}
+      </div>
+
+      {/* 이전 버전 더 보기 */}
+      {older.length > 0 && (
+        <>
+          <button onClick={()=>setExpanded(p=>!p)} style={{
+            background:"transparent", border:"1px solid #E8E0D8", borderRadius:8,
+            color:"#AAAAAA", fontSize:11, padding:"6px 14px", cursor:"pointer",
+            fontFamily:"inherit", width:"100%", marginBottom:8,
+          }}>
+            {expanded ? "▲ 접기" : `▼ 이전 업데이트 보기 (${older.length}개)`}
+          </button>
+          {expanded && older.map(log=>(
+            <div key={log.version} style={{ background:"#FFFFFF", border:"1px solid #E8E0D8", borderRadius:12, padding:"12px 14px", marginBottom:8 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <span style={{ fontSize:12, fontWeight:700, color:"#888888" }}>v{log.version}</span>
+                <span style={{ fontSize:10, color:"#AAAAAA" }}>{log.date}</span>
+              </div>
+              {log.items.map((item,i)=>(
+                <div key={i} style={{ fontSize:11, color:"#888888", padding:"3px 0", borderBottom: i<log.items.length-1?"1px solid #F5F0EB":"none" }}>
+                  · {item}
+                </div>
+              ))}
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [tab,     setTab]     = useState("monthly");
   const [status,  setStatus]  = useState("ok");
@@ -1069,14 +1087,16 @@ export default function App() {
     Object.values(raw.physicalAssets||{}).reduce((s,arr)=>s+(arr[i]||0),0)
   );
 
-  // Apps Script → JSON 2D배열 → parseRows → state 업데이트
   const fetchData = useCallback(() => {
     setStatus("loading");
     fetch(APPS_SCRIPT_URL)
       .then(r => { if (!r.ok) throw new Error("fetch fail"); return r.json(); })
       .then(rows => {
-        const parsed = parseRows(rows);
-        const mon    = buildMonthly(parsed);
+        const parsed  = parseRows(rows);
+        const groups  = buildGroups(parsed, rows);
+        parsed.fixedGroups = groups.fixedGroups;
+        parsed.varGroups   = groups.varGroups;
+        const mon = buildMonthly(parsed);
         setRaw(parsed);
         setMonthly(mon);
         setActive(mon.filter(m=>m.income.total>0));
@@ -1084,7 +1104,9 @@ export default function App() {
         setStatus("ok");
       })
       .catch(() => {
-        // 실패 시 목업 유지
+        const groups  = buildGroups(MOCK_RAW, []);
+        MOCK_RAW.fixedGroups = groups.fixedGroups;
+        MOCK_RAW.varGroups   = groups.varGroups;
         const mon = buildMonthly(MOCK_RAW);
         setRaw(MOCK_RAW);
         setMonthly(mon);
@@ -1114,6 +1136,10 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0;}
         @keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+
+        /* 스크롤바 숨기기 */
+        ::-webkit-scrollbar { display: none; }
+        * { scrollbar-width: none; -ms-overflow-style: none; }
 
         /* 반응형 헬퍼 */
         .app-inner { max-width:1200px; margin:0 auto; }
@@ -1164,7 +1190,7 @@ export default function App() {
             </div>
           </div>
           <div style={{ fontSize:10, color: status==="error"?"#F0445288":"#AAAAAA", marginBottom:10 }}>
-            {status==="error" ? "목업 데이터 미리보기" : status==="loading" ? "구글 시트 불러오는 중…" : `목업 데이터 미리보기 · ${timeStr}`}
+            {status==="error" ? "시트 연결 실패 · 이전 데이터 표시 중" : status==="loading" ? "구글 시트 불러오는 중…" : timeStr}
           </div>
           <div className="tab-bar">
             {tabs.map(t=>(
@@ -1212,6 +1238,9 @@ export default function App() {
               {tab==="alert"   && <AlertTab   monthly={monthly} active={active} raw={raw} />}
             </>
           )}
+
+          {/* 업데이트 로그 */}
+          <ChangelogPanel />
         </div>
       </div>
 
