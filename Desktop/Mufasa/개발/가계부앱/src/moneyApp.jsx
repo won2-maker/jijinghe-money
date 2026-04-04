@@ -47,11 +47,11 @@ function parseRows(rows) {
     vals.forEach((v,i) => { target[key][i] += v; });
   };
 
-  const income         = {}; // D열 소분류별
-  const fixedByItem    = {}; // D열 소분류별 (총합용)
-  const variableByItem = {}; // D열 소분류별 (총합용)
-  const fixedGroups    = {}; // C열 중분류별 합산
-  const varGroups      = {}; // C열 중분류별 합산
+  const income         = {};
+  const fixedByItem    = {};
+  const variableByItem = {};
+  const fixedGroups    = {};
+  const varGroups      = {};
   const debt           = {};
   const assets         = {};
   const physicalAssets = {};
@@ -68,26 +68,33 @@ function parseRows(rows) {
     if (bRaw) lastB = bRaw;
     if (cRaw) lastC = cRaw;
 
-    // 합계 행 스킵
-    if (lastB.includes("합계") || dCol.includes("합계")) return;
-    if (lastC.includes("합계")) return;
-    // 항목명 없으면 스킵
+    // ── 스킵 조건 ──
+    // 1) D열 소분류가 비어있는 행 = 합계/그룹 행 → 스킵
     if (!dCol) return;
+    // 2) A~D열 어디든 "합계" 텍스트 포함 → 스킵
+    if ([aRaw,bRaw,cRaw,dCol].some(v => v.includes("합계"))) return;
+    // 3) B열 대분류가 "합계"인 섹션 → 스킵
+    if (lastB.includes("합계")) return;
+    // 4) C열 중분류가 "합계"인 행 → 스킵
+    if (lastC.includes("합계")) return;
 
     if (lastA === "수익") {
       addMonthly(income, dCol, i);
+
     } else if (lastA === "지출" && lastB === "고정지출") {
-      // D열 소분류별로 저장 (전체 합산용)
       addMonthly(fixedByItem, dCol, i);
-      // C열 중분류별로도 합산
       if (lastC) addMonthly(fixedGroups, lastC, i);
+
     } else if (lastA === "지출" && lastB === "변동지출") {
       addMonthly(variableByItem, dCol, i);
       if (lastC) addMonthly(varGroups, lastC, i);
+
     } else if (lastA === "부채") {
       addMonthly(debt, dCol, i);
+
     } else if (lastA === "금융자산") {
       addMonthly(assets, dCol, i);
+
     } else if (lastA === "실물자산") {
       addMonthly(physicalAssets, dCol, i);
     }
@@ -107,7 +114,6 @@ function parseRows(rows) {
 
 // ─────────────────────────────────────────────
 // 그룹핑은 parseRows에서 직접 처리하므로 별도 함수 불필요
-// fetchData에서 buildGroups 대신 parsed에서 바로 사용
 // ─────────────────────────────────────────────
 
 // ─────────────────────────────────────────────
@@ -1005,6 +1011,22 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.1.2",
+    date: "2026-04-04",
+    items: [
+      "합계 행 이중집계 버그 수정 (D열 비어있는 행 스킵)",
+      "A~D열 '합계' 텍스트 포함 행 전체 스킵",
+    ],
+  },
+  {
+    version: "1.1.1",
+    date: "2026-04-04",
+    items: [
+      "C열 중분류 기준 집계 방식 수정",
+      "FIXED_GROUPS/VAR_GROUPS 하드코딩 완전 제거",
+    ],
+  },
   {
     version: "1.1.0",
     date: "2026-04-04",
