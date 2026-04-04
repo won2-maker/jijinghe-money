@@ -275,23 +275,45 @@ function AccordionCard({ label, value, color, sub, isOpen, onToggle, children })
 }
 
 function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
-  const src     = isFixed ? (raw?.fixed || {}) : (raw?.variable || {});
-  const keyMap  = isFixed ? (raw?.fixedGroupKeys || {}) : (raw?.varGroupKeys || {});
+  const src    = isFixed ? (raw?.fixed || {}) : (raw?.variable || {});
+  const keyMap = isFixed ? (raw?.fixedGroupKeys || {}) : (raw?.varGroupKeys || {});
+
+  // 통신비 → 카드 합산 매핑 (표시용, 실집계 변경 없음)
+  // 나중에 카드 사용 안 할 때 이 설정만 바꾸면 됨
+  const MERGE_INTO = {
+    "통신비::원중 + 인터넷": "생활비::원중 카드(KB) - 기타",
+    "통신비::혜지":           "생활비::혜지 카드(KB) - 장보기",
+  };
+  // 합산될 항목들 (표시에서 숨김)
+  const MERGED_KEYS = new Set(Object.keys(MERGE_INTO));
+
+  const getVal = (uKey) => monthIdx !== null
+    ? (src[uKey]?.[monthIdx] || 0)
+    : (src[uKey] || []).reduce((a,b)=>a+b, 0);
 
   return (
     <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
       {Object.entries(groups).map(([group, groupTotal]) => {
         if (!groupTotal) return null;
-        // 이 중분류에 속하는 유니크키 찾기
+
         const items = Object.entries(keyMap)
           .filter(([,g]) => g === group)
-          .map(([uKey]) => ({
-            uKey,
-            label: uKey.includes("::") ? uKey.replace("::", ": ") : uKey, // 중분류: 소분류 표시
-            v: monthIdx !== null
-              ? (src[uKey]?.[monthIdx] || 0)
-              : (src[uKey] || []).reduce((a,b)=>a+b, 0)
-          }))
+          .filter(([uKey]) => !MERGED_KEYS.has(uKey)) // 합산될 항목 숨김
+          .map(([uKey]) => {
+            let v = getVal(uKey);
+            let suffix = "";
+            // 이 항목으로 합산되는 통신비 찾기
+            const merged = Object.entries(MERGE_INTO)
+              .filter(([,target]) => target === uKey)
+              .map(([srcKey]) => ({ srcKey, sv: getVal(srcKey) }))
+              .filter(x => x.sv > 0);
+            if (merged.length > 0) {
+              const mergedSum = merged.reduce((s,x)=>s+x.sv,0);
+              v += mergedSum;
+              suffix = " (통신비 포함)";
+            }
+            return { uKey, label: (uKey.includes("::") ? uKey.replace("::", ": ") : uKey) + suffix, v };
+          })
           .filter(x => x.v > 0);
 
         return (
@@ -1195,6 +1217,14 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.6.4",
+    date: "2026-04-04",
+    items: [
+      "통신비(원중/혜지) 카드 항목에 합산 표시 (통신비 포함)",
+      "디버그 로그 제거",
+    ],
+  },
   {
     version: "1.6.3",
     date: "2026-04-04",
