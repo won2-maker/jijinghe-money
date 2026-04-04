@@ -49,6 +49,8 @@ function parseRows(rows) {
   const variableByItem = {};
   const fixedGroups    = {};
   const varGroups      = {};
+  const fixedGroupKeys = {}; // 소분류→중분류 역매핑
+  const varGroupKeys   = {}; // 소분류→중분류 역매핑
   const debt           = {};
   const assets         = {};
   const physicalAssets = {};
@@ -65,33 +67,28 @@ function parseRows(rows) {
     if (bRaw) lastB = bRaw;
     if (cRaw) lastC = cRaw;
 
-    // "합계" 포함 행 스킵
+    // "합계" 포함 행 스킵 (현재 행 기준)
     if ([aRaw,bRaw,cRaw,dCol].some(v => v.includes("합계"))) return;
-    if (lastB.includes("합계") || lastC.includes("합계")) return;
-
-    // ── 수익/고정지출/변동지출: D열이 항목명 ──
     if (lastA === "수익" || lastA === "지출") {
       if (!dCol) return; // D열 없으면 스킵
       if (lastA === "수익") {
         addMonthly(income, dCol, i);
       } else if (lastB === "고정지출") {
         addMonthly(fixedByItem, dCol, i);
-        if (lastC) addMonthly(fixedGroups, lastC, i);
+        if (lastC) { addMonthly(fixedGroups, lastC, i); fixedGroupKeys[dCol] = lastC; }
       } else if (lastB === "변동지출") {
         addMonthly(variableByItem, dCol, i);
-        if (lastC) addMonthly(varGroups, lastC, i);
+        if (lastC) { addMonthly(varGroups, lastC, i); varGroupKeys[dCol] = lastC; }
       }
       return;
     }
 
     // ── 부채/금융자산/실물자산: C열이 항목명 ──
-    // lastB가 합계면 스킵
-    if (lastB === "합계") return;
-    // A열에 다른 섹션 텍스트가 새로 나타나면 해당 섹션 종료
-    // → aRaw가 비어있거나 현재 섹션과 같을 때만 집계
-    if (aRaw && aRaw !== lastA) return;
-    // C열 새 값이 있는 행만 집계
-    if (!cRaw) return;
+    // 합계 행 스킵 (이미 위에서 처리됨)
+    // 계산용 행 스킵 (투자수익, 비중 등)
+    const skipKeywords = ["수익률", "투자수익", "소득 대비", "총 부채상환", "총 자산", "잔금"];
+    if (skipKeywords.some(k => [bRaw,cRaw,dCol].some(v => v.includes(k)))) return;
+    if (!lastC) return;
 
     if (lastA === "부채") {
       addMonthly(debt, lastC, i);
@@ -108,6 +105,8 @@ function parseRows(rows) {
     variable: variableByItem,
     fixedGroups,
     varGroups,
+    fixedGroupKeys,
+    varGroupKeys,
     debt,
     assets,
     physicalAssets,
@@ -220,14 +219,16 @@ function AccordionCard({ label, value, color, sub, isOpen, onToggle, children })
   return (
     <div style={{ marginBottom:8 }}>
       <div onClick={onToggle} style={{
-        background:isOpen?`${color}15`:"#FFFFFF",
-        border:`1px solid ${isOpen?color:color+"33"}`,
+        background:isOpen?`${color}15`:"#EDE8E3",
+        border:`1px solid ${isOpen?color:"transparent"}`,
         borderRadius:14, padding:"14px 16px", cursor:"pointer", transition:"all .15s",
       }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
             <div style={{ fontSize:9, color, fontWeight:700, letterSpacing:.8, marginBottom:6 }}>{label}</div>
-            <div style={{ fontSize:20, fontWeight:700, color:isOpen?color:"#1A1A1A" }}>{fmt(value)}</div>
+            <div style={{ fontSize:20, fontWeight:700, color:isOpen?color:"#1A1A1A" }}>
+              {typeof value === "string" ? value : fmt(value)}
+            </div>
           </div>
           <div style={{ textAlign:"right" }}>
             {sub}
@@ -240,16 +241,37 @@ function AccordionCard({ label, value, color, sub, isOpen, onToggle, children })
   );
 }
 
-function DetailPanel({ groups, src, monthIdx, color, privacy }) {
+function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
+  // 중분류별 소분류 항목 찾기
+  const src = isFixed ? (raw?.fixed || {}) : (raw?.variable || {});
+  const groupMap = isFixed ? (raw?.fixedGroups || {}) : (raw?.varGroups || {});
+
   return (
     <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
       {Object.entries(groups).map(([group, groupTotal]) => {
         if (!groupTotal) return null;
+        // 이 중분류에 속하는 소분류 항목들 찾기 (raw.fixed/variable에서 C열 기준 매칭)
+        // groupMap에서 해당 그룹의 키 배열 가져오기 (없으면 빈 배열)
+        const itemKeys = Object.keys(src).filter(k => {
+          // 해당 그룹에 속하는 항목인지 확인 (groupMap 역매핑)
+          return raw[isFixed?"fixedGroupKeys":"varGroupKeys"]?.[k] === group;
+        });
+        const items = itemKeys
+          .map(k => ({ k, v: monthIdx !== null ? (src[k]?.[monthIdx] || 0) : (src[k] || []).reduce((a,b)=>a+b,0) }))
+          .filter(x => x.v > 0);
+
         return (
-          <div key={group} style={{ marginBottom:12 }}>
-            <div style={{ fontSize:10, color, fontWeight:700, marginBottom:6, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
-              {group} <span style={{ fontWeight:400, color:"#666666" }}>{privacy?"●●●":fmt(groupTotal)}</span>
+          <div key={group} style={{ marginBottom:10 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
+              <span>{group}</span>
+              <span style={{ fontWeight:700 }}>{privacy?"●●●":fmt(groupTotal)}</span>
             </div>
+            {items.map(({k,v}) => (
+              <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"2px 0 2px 8px" }}>
+                <span>{k}</span>
+                <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(v)}</span>
+              </div>
+            ))}
           </div>
         );
       })}
@@ -304,19 +326,22 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
       <div className="desktop-2col">
         {/* 왼쪽: 카드 영역 */}
         <div className="desktop-left">
-          {/* 3칸 요약 카드 */}
-          <div className="summary-3col" style={{ display:"grid", gridTemplateColumns:`${privacy?"1fr 1fr":"1fr 1fr 1fr"}`, gap:8, marginBottom:12 }}>
-            {!privacy && (
-              <div onClick={()=>toggle("income")} style={{ background:open==="income"?"#FF7E3618":"#EDE8E3", border:`1px solid ${open==="income"?"#FF7E36":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
-                <div style={{ fontSize:8, color:"#FF7E36", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>수입</div>
-                <div style={{ fontSize:15, fontWeight:700, color:"#FF7E36" }}>{fmtM(m.income.total)}</div>
-                <div style={{ fontSize:8, color:"#888888", marginTop:4 }}>{open==="income"?"▲":"▼"} 세부</div>
-              </div>
-            )}
+          {/* 3칸 요약 카드 - 항상 3칸 유지, privacy시 수입만 마스킹 */}
+          <div className="summary-3col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
+            <div onClick={()=>!privacy && toggle("income")} style={{ background:open==="income"?"#FF7E3618":"#EDE8E3", border:`1px solid ${open==="income"?"#FF7E36":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:privacy?"default":"pointer" }}>
+              <div style={{ fontSize:8, color:"#FF7E36", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>수입</div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#FF7E36" }}>{privacy?"●●●":fmtM(m.income.total)}</div>
+              <div style={{ fontSize:8, color:"#888888", marginTop:4 }}>{privacy?"":open==="income"?"▲":"▼ 세부"}</div>
+            </div>
             <div onClick={()=>toggle("fixed")} style={{ background:open==="fixed"?"#c96a6a18":"#EDE8E3", border:`1px solid ${open==="fixed"?"#F04452":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
-              <div style={{ fontSize:8, color:"#F04452", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>고정지출</div>
-              <div style={{ fontSize:15, fontWeight:700, color:"#F04452" }}>{fmtM(m.fixed)}</div>
-              <div style={{ fontSize:8, color:"#888888", marginTop:4 }}>{open==="fixed"?"▲":"▼"} 세부</div>
+              <div style={{ fontSize:8, color:"#F04452", fontWeight:700, letterSpacing:.8, marginBottom:4 }}>고정지출</div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#F04452", marginBottom:4 }}>{fmtM(m.fixed)}</div>
+              {/* 집세 / 기타 분리 */}
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:"#888888" }}>
+                <span>집세 {fmtM(m.fixedGroups["집세"]||0)}</span>
+                <span>기타 {fmtM((m.fixed||0)-(m.fixedGroups["집세"]||0))}</span>
+              </div>
+              <div style={{ fontSize:8, color:"#888888", marginTop:3 }}>{open==="fixed"?"▲":"▼"} 세부</div>
             </div>
             <div onClick={()=>toggle("variable")} style={{ background:open==="variable"?"#9b77c918":"#EDE8E3", border:`1px solid ${open==="variable"?"#8B5CF6":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
               <div style={{ fontSize:8, color:"#8B5CF6", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>변동지출</div>
@@ -342,19 +367,17 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
           )}
           {open==="fixed" && (
             <div style={{ marginBottom:8 }}>
-              <DetailPanel groups={m.fixedGroups} src={{}} monthIdx={selIdx} color="#F04452" privacy={false} />
+              <DetailPanel groups={m.fixedGroups} raw={raw} monthIdx={selIdx} color="#F04452" privacy={false} isFixed={true} />
             </div>
           )}
           {open==="variable" && (
             <div style={{ marginBottom:8 }}>
-              <DetailPanel groups={m.varGroups} src={{}} monthIdx={selIdx} color="#8B5CF6" privacy={false} />
+              <DetailPanel groups={m.varGroups} raw={raw} monthIdx={selIdx} color="#8B5CF6" privacy={false} isFixed={false} />
             </div>
           )}
 
-          {/* 순이익 - privacy시 숨김 */}
-          {!privacy && (
-            <NetCard label={`${m.month} 순이익`} net={m.순익} income={m.income.total} expense={m.fixed+m.variable} privacy={false} />
-          )}
+          {/* 순이익 - privacy시 마스킹 */}
+          <NetCard label={`${m.month} 순이익`} net={m.순익} income={m.income.total} expense={m.fixed+m.variable} privacy={privacy} />
 
           {/* 총 순자산 */}
           <div style={{ marginBottom:16 }}>
@@ -502,32 +525,28 @@ function YearTab({ monthly, active, raw, privacy }) {
     <div>
       <div style={{ fontSize:11, color:"#333333", marginBottom:14 }}>1~{active.length}월 누적 기준</div>
 
-      {!privacy && (
-        <AccordionCard label="총 수입" value={totalIncome.total} color="#FF7E36" isOpen={open==="income"} onToggle={()=>toggle("income")}
-          sub={<div style={{ fontSize:10, color:"#333333" }}>연간 합계</div>}>
-          <div style={{ background:"#F5F0EB", border:"1px solid #e8c76a22", borderRadius:12, padding:"12px 14px" }}>
-            {Object.entries(raw.income).map(([k,arr])=>{ const v=sum(arr); if(!v) return null; return (
-              <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", padding:"4px 0", borderBottom:"1px solid #E8E0D8" }}>
-                <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
-              </div>
-            ); })}
-          </div>
-        </AccordionCard>
-      )}
+      <AccordionCard label="총 수입" value={privacy?"●●●":totalIncome.total} color="#FF7E36" isOpen={open==="income"&&!privacy} onToggle={()=>!privacy&&toggle("income")}
+        sub={<div style={{ fontSize:10, color:"#333333" }}>연간 합계</div>}>
+        <div style={{ background:"#F5F0EB", border:"1px solid #e8c76a22", borderRadius:12, padding:"12px 14px" }}>
+          {Object.entries(raw.income).map(([k,arr])=>{ const v=sum(arr); if(!v) return null; return (
+            <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", padding:"4px 0", borderBottom:"1px solid #E8E0D8" }}>
+              <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
+            </div>
+          ); })}
+        </div>
+      </AccordionCard>
 
       <AccordionCard label="총 고정지출" value={totalFixed} color="#F04452" isOpen={open==="fixed"} onToggle={()=>toggle("fixed")}
         sub={<div style={{ fontSize:10, color:"#333333" }}>수입 대비 {totalIncome.total>0?(totalFixed/totalIncome.total*100).toFixed(0):"-"}%</div>}>
-        <DetailPanel groups={yearFixedGroups} src={{}} monthIdx={null} color="#F04452" />
+        <DetailPanel groups={yearFixedGroups} raw={raw} monthIdx={null} color="#F04452" isFixed={true} />
       </AccordionCard>
 
       <AccordionCard label="총 변동지출" value={totalVariable} color="#8B5CF6" isOpen={open==="variable"} onToggle={()=>toggle("variable")}
         sub={<div style={{ fontSize:10, color:"#333333" }}>수입 대비 {totalIncome.total>0?(totalVariable/totalIncome.total*100).toFixed(0):"-"}%</div>}>
-        <DetailPanel groups={yearVarGroups} src={{}} monthIdx={null} color="#8B5CF6" />
+        <DetailPanel groups={yearVarGroups} raw={raw} monthIdx={null} color="#8B5CF6" isFixed={false} />
       </AccordionCard>
 
-      {!privacy && (
-        <NetCard label="연간 순이익 (누적)" net={totalNet} income={totalIncome.total} expense={totalFixed+totalVariable} privacy={false} />
-      )}
+      <NetCard label="연간 순이익 (누적)" net={totalNet} income={totalIncome.total} expense={totalFixed+totalVariable} privacy={privacy} />
 
       <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
         <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>월별 흐름</div>
@@ -807,20 +826,18 @@ function AlertTab({ monthly, active, raw, privacy }) {
   const C = { up:"#F04452", down:"#00C471", new:"#8B5CF6", border:"#DDD8D3" };
 
   const Row = ({ label, cur, prev, diff, color }) => {
-    const pct = prev > 0 ? ((diff/prev)*100).toFixed(0) : null;
+    const pct = prev > 0 ? Math.abs((diff/prev)*100).toFixed(0) : null;
     return (
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
-        <div>
+        <div style={{ flex:1 }}>
           <div style={{ fontSize:12, color:"#1A1A1A", fontWeight:500 }}>{label}</div>
           <div style={{ fontSize:10, color:"#888888", marginTop:2 }}>
             {prev > 0 ? `${fmtM(prev)} → ${fmtM(cur)}` : `신규 ${fmtM(cur)}`}
           </div>
         </div>
-        <div style={{ textAlign:"right" }}>
-          <div style={{ fontSize:13, fontWeight:700, color }}>
-            {diff > 0 ? "+" : ""}{fmtM(diff)}
-          </div>
-          {pct && <div style={{ fontSize:9, color, marginTop:2 }}>{diff>0?"+":""}{pct}%</div>}
+        <div style={{ textAlign:"right", minWidth:70 }}>
+          <div style={{ fontSize:16, fontWeight:700, color }}>{fmtM(Math.abs(diff))}</div>
+          {pct && <div style={{ fontSize:9, color, marginTop:2 }}>{pct}%</div>}
         </div>
       </div>
     );
@@ -1044,11 +1061,29 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // ─────────────────────────────────────────────
 const CHANGELOG = [
   {
+    version: "1.3.0",
+    date: "2026-04-04",
+    items: [
+      "세부내역 - 중분류/소분류 모두 표시",
+      "고정지출 카드 - 집세/기타 분리 표시",
+      "지출 알림 Row - +/- 제거, 금액 크게",
+    ],
+  },
+  {
+    version: "1.1.3",
+    date: "2026-04-04",
+    items: [
+      "부채/금융자산/실물자산 C열 기준 파싱으로 수정",
+      "투자수익 등 계산행 집계 제외",
+      "파싱 로직 단순화 - 합계 행만 스킵",
+    ],
+  },
+  {
     version: "1.1.2",
     date: "2026-04-04",
     items: [
-      "합계 행 이중집계 버그 수정 (D열 비어있는 행 스킵)",
-      "집세 별도 합계 행 제거 - 주거+집 관리비를 집세로 통합 표시",
+      "합계 행 이중집계 버그 수정",
+      "집세 별도 합계 행 제거 - 주거+집 관리비 통합",
     ],
   },
   {
@@ -1063,7 +1098,7 @@ const CHANGELOG = [
     version: "1.1.0",
     date: "2026-04-04",
     items: [
-      "민감정보 가리기 탭 추가",
+      "민감정보 가리기 기능 추가",
       "지출 알림 문구 개선 (더 썼어요 / 덜 썼어요)",
       "카드 배경색 개선",
       "업데이트 로그 UI 소형화",
@@ -1074,7 +1109,6 @@ const CHANGELOG = [
     date: "2026-04-04",
     items: [
       "A열 구분 기준 동적 파싱 (행 번호 하드코딩 완전 제거)",
-      "C열 중분류 기준 그룹핑 동적 생성",
       "목업 문구 제거, 스크롤바 숨기기",
       "업데이트 로그 패널 추가",
     ],
