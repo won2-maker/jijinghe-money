@@ -31,7 +31,7 @@ function parseNum(s) {
 }
 
 // Apps Script에서 받은 2D 배열(rows)을 파싱
-// A열 구분, B열 대분류 기준으로 동적 파싱 — 행 번호 하드코딩 없음
+// A열 구분, B열 대분류, C열 중분류 기준으로 동적 파싱 — 행 번호 하드코딩 없음
 function parseRows(rows) {
 
   // 월별 값 추출 (col 4~15 = 1월~12월)
@@ -40,58 +40,25 @@ function parseRows(rows) {
     return Array.from({length:12}, (_,i) => parseNum(r[4+i]));
   };
 
-  const income        = {};
-  const fixed         = {};
-  const variable      = {};
-  const debt          = {};
-  const assets        = {};
-  const physicalAssets= {};
+  // 월별 배열 합산 유틸
+  const addMonthly = (target, key, rowIdx) => {
+    const vals = getMonthly(rowIdx);
+    if (!target[key]) target[key] = Array(12).fill(0);
+    vals.forEach((v,i) => { target[key][i] += v; });
+  };
 
-  // 행 합치기 대응: 마지막으로 읽은 A, B열 값을 유지
-  let lastA = "";
-  let lastB = "";
+  const income         = {}; // D열 소분류별
+  const fixedByItem    = {}; // D열 소분류별 (총합용)
+  const variableByItem = {}; // D열 소분류별 (총합용)
+  const fixedGroups    = {}; // C열 중분류별 합산
+  const varGroups      = {}; // C열 중분류별 합산
+  const debt           = {};
+  const assets         = {};
+  const physicalAssets = {};
 
-  rows.forEach((row, i) => {
-    const aRaw = String(row[0] || "").trim();
-    const bRaw = String(row[1] || "").trim();
-    const dCol = String(row[3] || "").trim(); // 소분류(항목명)
-
-    if (aRaw) lastA = aRaw;
-    if (bRaw) lastB = bRaw;
-
-    // 합계 행 스킵
-    if (lastB.includes("합계") || dCol.includes("합계")) return;
-    // 항목명 없으면 스킵
-    if (!dCol) return;
-
-    if (lastA === "수익") {
-      income[dCol] = getMonthly(i);
-    } else if (lastA === "지출" && lastB === "고정지출") {
-      fixed[dCol] = getMonthly(i);
-    } else if (lastA === "지출" && lastB === "변동지출") {
-      variable[dCol] = getMonthly(i);
-    } else if (lastA === "부채") {
-      debt[dCol] = getMonthly(i);
-    } else if (lastA === "금융자산") {
-      assets[dCol] = getMonthly(i);
-    } else if (lastA === "실물자산") {
-      physicalAssets[dCol] = getMonthly(i);
-    }
-  });
-
-  return { income, fixed, variable, debt, assets, physicalAssets };
-}
-
-// ─────────────────────────────────────────────
-// 그룹핑: 시트 C열(중분류) 기준으로 동적 생성
-// ─────────────────────────────────────────────
-function buildGroups(raw, rows) {
-  // C열 중분류 → D열 소분류 매핑 동적 생성
-  const fixedGroups  = {};
-  const varGroups    = {};
   let lastA = "", lastB = "", lastC = "";
 
-  rows.forEach(row => {
+  rows.forEach((row, i) => {
     const aRaw = String(row[0] || "").trim();
     const bRaw = String(row[1] || "").trim();
     const cRaw = String(row[2] || "").trim();
@@ -101,19 +68,47 @@ function buildGroups(raw, rows) {
     if (bRaw) lastB = bRaw;
     if (cRaw) lastC = cRaw;
 
-    if (!dCol || dCol.includes("합계") || lastB.includes("합계")) return;
+    // 합계 행 스킵
+    if (lastB.includes("합계") || dCol.includes("합계")) return;
+    if (lastC.includes("합계")) return;
+    // 항목명 없으면 스킵
+    if (!dCol) return;
 
-    if (lastA === "지출" && lastB === "고정지출" && lastC) {
-      if (!fixedGroups[lastC]) fixedGroups[lastC] = [];
-      if (!fixedGroups[lastC].includes(dCol)) fixedGroups[lastC].push(dCol);
-    } else if (lastA === "지출" && lastB === "변동지출" && lastC) {
-      if (!varGroups[lastC]) varGroups[lastC] = [];
-      if (!varGroups[lastC].includes(dCol)) varGroups[lastC].push(dCol);
+    if (lastA === "수익") {
+      addMonthly(income, dCol, i);
+    } else if (lastA === "지출" && lastB === "고정지출") {
+      // D열 소분류별로 저장 (전체 합산용)
+      addMonthly(fixedByItem, dCol, i);
+      // C열 중분류별로도 합산
+      if (lastC) addMonthly(fixedGroups, lastC, i);
+    } else if (lastA === "지출" && lastB === "변동지출") {
+      addMonthly(variableByItem, dCol, i);
+      if (lastC) addMonthly(varGroups, lastC, i);
+    } else if (lastA === "부채") {
+      addMonthly(debt, dCol, i);
+    } else if (lastA === "금융자산") {
+      addMonthly(assets, dCol, i);
+    } else if (lastA === "실물자산") {
+      addMonthly(physicalAssets, dCol, i);
     }
   });
 
-  return { fixedGroups, varGroups };
+  return {
+    income,
+    fixed:    fixedByItem,
+    variable: variableByItem,
+    fixedGroups,
+    varGroups,
+    debt,
+    assets,
+    physicalAssets,
+  };
 }
+
+// ─────────────────────────────────────────────
+// 그룹핑은 parseRows에서 직접 처리하므로 별도 함수 불필요
+// fetchData에서 buildGroups 대신 parsed에서 바로 사용
+// ─────────────────────────────────────────────
 
 // ─────────────────────────────────────────────
 // 헬퍼
@@ -128,11 +123,12 @@ function buildMonthly(raw) {
   const vg = raw.varGroups    || {};
   return MONTHS.map((month,i) => {
     const incomeTotal = Object.values(raw.income).reduce((s,a)=>s+(a[i]||0),0);
-    const income   = { total: incomeTotal };
-    const fixed    = Object.values(raw.fixed).reduce((s,a)=>s+(a[i]||0),0);
-    const variable = Object.values(raw.variable).reduce((s,a)=>s+(a[i]||0),0);
-    const fixedGroups = Object.fromEntries(Object.entries(fg).map(([g,ks])=>[g,fwIdx(ks,raw.fixed,i)]));
-    const varGroups   = Object.fromEntries(Object.entries(vg).map(([g,ks])=>[g,fwIdx(ks,raw.variable,i)]));
+    const income      = { total: incomeTotal };
+    const fixed       = Object.values(raw.fixed).reduce((s,a)=>s+(a[i]||0),0);
+    const variable    = Object.values(raw.variable).reduce((s,a)=>s+(a[i]||0),0);
+    // C열 중분류별 월별 합계 (이미 parseRows에서 합산된 배열)
+    const fixedGroups = Object.fromEntries(Object.entries(fg).map(([g,arr])=>[g, arr[i]||0]));
+    const varGroups   = Object.fromEntries(Object.entries(vg).map(([g,arr])=>[g, arr[i]||0]));
     const totalDebt     = Object.values(raw.debt).reduce((s,a)=>s+(a[i]||0),0);
     const totalAsset    = Object.values(raw.assets).reduce((s,a)=>s+(a[i]||0),0);
     const totalPhysical = Object.values(raw.physicalAssets||{}).reduce((s,a)=>s+(a[i]||0),0);
@@ -464,8 +460,8 @@ function YearTab({ monthly, active, raw }) {
   const totalNet      = sum(monthly.map(m=>m.순익));
   const fg = raw.fixedGroups || {};
   const vg = raw.varGroups   || {};
-  const yearFixedGroups = Object.fromEntries(Object.entries(fg).map(([g,ks])=>[g, fwAll(ks, raw.fixed)]));
-  const yearVarGroups   = Object.fromEntries(Object.entries(vg).map(([g,ks])=>[g, fwAll(ks, raw.variable)]));
+  const yearFixedGroups = Object.fromEntries(Object.entries(fg).map(([g,arr])=>[g, sum(arr)]));
+  const yearVarGroups   = Object.fromEntries(Object.entries(vg).map(([g,arr])=>[g, sum(arr)]));
   const barData = active.map(a=>({ name:a.month, 수입:a.income.total, 고정지출:a.fixed, 변동지출:a.variable }));
 
   return (
@@ -926,6 +922,17 @@ const MOCK_RAW = {
     "집":  [500000000,500000000,500000000,500000000,0,0,0,0,0,0,0,0],
     "차":  [30000000, 29500000, 29000000, 28500000, 0,0,0,0,0,0,0,0],
   },
+  // 그룹핑 목업 (C열 중분류 기준 월별 합산)
+  fixedGroups: {
+    "주거대출":  [3545920,3542700,3401672,3268902,2761158,2764868,2768578,2772288,2775998,2779708,2783418,2787128],
+    "집관리비":  [458860, 360260, 308420, 139920, 0,0,0,0,0,0,0,0],
+    "생활고정":  [1030000,1517800,1601311,610000, 10800,10800,10800,10800,10800,10800,10800,10800],
+  },
+  varGroups: {
+    "주거":        [341022,372492,371534,371534,0,0,0,0,0,0,0,0],
+    "자동차·의료": [625700,203900,347800,0,     0,0,0,0,0,0,0,0],
+    "생활비":      [766000,1183300,2524086,380000,0,0,0,0,0,0,0,0],
+  },
 };
 
 // ─────────────────────────────────────────────
@@ -1104,11 +1111,8 @@ export default function App() {
     fetch(APPS_SCRIPT_URL)
       .then(r => { if (!r.ok) throw new Error("fetch fail"); return r.json(); })
       .then(rows => {
-        const parsed  = parseRows(rows);
-        const groups  = buildGroups(parsed, rows);
-        parsed.fixedGroups = groups.fixedGroups;
-        parsed.varGroups   = groups.varGroups;
-        const mon = buildMonthly(parsed);
+        const parsed = parseRows(rows);
+        const mon    = buildMonthly(parsed);
         setRaw(parsed);
         setMonthly(mon);
         setActive(mon.filter(m=>m.income.total>0));
@@ -1116,9 +1120,6 @@ export default function App() {
         setStatus("ok");
       })
       .catch(() => {
-        const groups  = buildGroups(MOCK_RAW, []);
-        MOCK_RAW.fixedGroups = groups.fixedGroups;
-        MOCK_RAW.varGroups   = groups.varGroups;
         const mon = buildMonthly(MOCK_RAW);
         setRaw(MOCK_RAW);
         setMonthly(mon);
