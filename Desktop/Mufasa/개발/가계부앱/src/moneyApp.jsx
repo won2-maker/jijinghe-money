@@ -224,26 +224,16 @@ function AccordionCard({ label, value, color, sub, isOpen, onToggle, children })
   );
 }
 
-function DetailPanel({ groups, src, monthIdx, color }) {
-  const allGroups = { ...FIXED_GROUPS, ...VAR_GROUPS };
+function DetailPanel({ groups, src, monthIdx, color, privacy }) {
   return (
-    <div style={{ background:"#F5F0EB", border:`1px solid ${color}22`, borderRadius:12, padding:"12px 14px" }}>
+    <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
       {Object.entries(groups).map(([group, groupTotal]) => {
-        const keys  = allGroups[group]||[];
-        const items = keys
-          .map(k=>({ k, v: monthIdx!==null ? (src[k]?.[monthIdx]||0) : sum(src[k]||[]) }))
-          .filter(x=>x.v>0);
-        if (!groupTotal && !items.length) return null;
+        if (!groupTotal) return null;
         return (
           <div key={group} style={{ marginBottom:12 }}>
             <div style={{ fontSize:10, color, fontWeight:700, marginBottom:6, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
-              {group} <span style={{ fontWeight:400, color:"#333333" }}>{fmt(groupTotal)}</span>
+              {group} <span style={{ fontWeight:400, color:"#666666" }}>{privacy?"●●●":fmt(groupTotal)}</span>
             </div>
-            {items.map(({k,v})=>(
-              <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", padding:"3px 0", borderBottom:"1px solid #E8E0D8" }}>
-                <span>{k}</span><span style={{ fontWeight:600, color:"#333333" }}>{fmt(v)}</span>
-              </div>
-            ))}
           </div>
         );
       })}
@@ -468,16 +458,14 @@ function YearTab({ monthly, active, raw }) {
   const [open, setOpen] = useState(null);
   const toggle = key => setOpen(p=>p===key?null:key);
 
-  const totalIncome = {
-    급여: sum(monthly.map(m=>m.income.급여)),
-    기타: sum(monthly.map(m=>m.income.기타)),
-    total: sum(monthly.map(m=>m.income.total)),
-  };
+  const totalIncome = { total: sum(monthly.map(m=>m.income.total)) };
   const totalFixed    = sum(monthly.map(m=>m.fixed));
   const totalVariable = sum(monthly.map(m=>m.variable));
   const totalNet      = sum(monthly.map(m=>m.순익));
-  const yearFixedGroups = Object.fromEntries(Object.entries(FIXED_GROUPS).map(([g,ks])=>[g,fwAll(ks,raw.fixed)]));
-  const yearVarGroups   = Object.fromEntries(Object.entries(VAR_GROUPS).map(([g,ks])=>[g,fwAll(ks,raw.variable)]));
+  const fg = raw.fixedGroups || {};
+  const vg = raw.varGroups   || {};
+  const yearFixedGroups = Object.fromEntries(Object.entries(fg).map(([g,ks])=>[g, fwAll(ks, raw.fixed)]));
+  const yearVarGroups   = Object.fromEntries(Object.entries(vg).map(([g,ks])=>[g, fwAll(ks, raw.variable)]));
   const barData = active.map(a=>({ name:a.month, 수입:a.income.total, 고정지출:a.fixed, 변동지출:a.variable }));
 
   return (
@@ -485,7 +473,7 @@ function YearTab({ monthly, active, raw }) {
       <div style={{ fontSize:11, color:"#333333", marginBottom:14 }}>1~{active.length}월 누적 기준</div>
 
       <AccordionCard label="총 수입" value={totalIncome.total} color="#FF7E36" isOpen={open==="income"} onToggle={()=>toggle("income")}
-        sub={<><div style={{ fontSize:10, color:"#333333", marginBottom:1 }}>급여 {fmtM(totalIncome.급여)}</div><div style={{ fontSize:10, color:"#333333" }}>기타 {fmtM(totalIncome.기타)}</div></>}>
+        sub={<div style={{ fontSize:10, color:"#333333" }}>연간 합계</div>}>
         <div style={{ background:"#F5F0EB", border:"1px solid #e8c76a22", borderRadius:12, padding:"12px 14px" }}>
           {Object.entries(raw.income).map(([k,arr])=>{ const v=sum(arr); if(!v) return null; return (
             <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", padding:"4px 0", borderBottom:"1px solid #E8E0D8" }}>
