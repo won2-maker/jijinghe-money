@@ -460,43 +460,41 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
             <div style={{ marginBottom:8 }}>
               <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
                 {(() => {
-                  // B열 기준: 급여 / 급여 외 소득 분리
-                  const 급여Total = Object.entries(raw.income)
+                  // 급여 항목들 (원중/혜지 각각)
+                  const 급여Items = Object.entries(raw.income)
                     .filter(([uKey]) => (raw.incomeBGroup?.[uKey]||"") === "급여")
-                    .reduce((s,[,arr]) => s+(arr[selIdx]||0), 0);
+                    .map(([uKey, arr]) => ({
+                      // "원중::25일" → "원중: 25일"
+                      label: uKey.includes("::") ? uKey.replace("::", ": ") : uKey,
+                      v: arr[selIdx]||0
+                    }))
+                    .filter(x => x.v > 0);
+
+                  // 급여 외 소득 항목들
                   const 기타Items = Object.entries(raw.income)
                     .filter(([uKey]) => {
                       const v = (raw.income[uKey]?.[selIdx]||0);
                       return v > 0 && (raw.incomeBGroup?.[uKey]||"") !== "급여";
                     })
                     .map(([uKey, arr]) => ({
-                      label: uKey.includes("::") ? uKey.replace("::", ": ") : uKey,
+                      label: uKey.includes("::") ? uKey.split("::")[1] : uKey,
                       v: arr[selIdx]||0
                     }));
+
+                  const ROW = (label, v, bold=false) => (
+                    <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:11, color:"#555555", padding:"5px 0", borderBottom:"1px solid #DDD8D3" }}>
+                      <span style={{ fontWeight:bold?700:400, color:bold?"#FF7E36":"#555555" }}>{label}</span>
+                      <span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
+                    </div>
+                  );
+
                   return (
                     <>
-                      {급여Total > 0 && (
-                        <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
-                          <span style={{ fontWeight:700, color:"#FF7E36" }}>급여</span>
-                          <span style={{ fontWeight:700, color:"#FF7E36" }}>{fmt(급여Total)}</span>
-                        </div>
-                      )}
-                      {기타Items.length === 1 ? (
-                        // 항목 1개면 헤더 없이 한 줄
-                        <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
-                          <span style={{ fontWeight:700, color:"#FF7E36" }}>급여 외 소득</span>
-                          <span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(기타Items[0].v)}</span>
-                        </div>
-                      ) : 기타Items.length > 1 ? (
-                        <div style={{ marginTop:8 }}>
-                          <div style={{ fontSize:10, color:"#FF7E36", fontWeight:700, marginBottom:4, paddingBottom:3, borderBottom:"1px solid #FF7E3622" }}>급여 외 소득</div>
-                          {기타Items.map(({label,v}) => (
-                            <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
-                              <span>{label}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
+                      {급여Items.map(({label,v}) => ROW(label, v))}
+                      {기타Items.length === 1
+                        ? ROW("급여 외 소득", 기타Items[0].v, true)
+                        : 기타Items.map(({label,v}) => ROW(label, v))
+                      }
                     </>
                   );
                 })()}
@@ -524,7 +522,7 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
               borderRadius:14, padding:"14px 16px", cursor:"pointer",
             }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div>
+                <div style={{ textAlign:"left" }}>
                   <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:8 }}>총 순자산</div>
                   <div style={{ fontSize:24, fontWeight:700, color:netWorth>=0?"#00C471":"#F04452" }}>
                     {(netWorth>=0?"+":"")+fmtM(netWorth)}
@@ -776,7 +774,7 @@ function DebtTab({ monthly, active, raw }) {
           {/* 총 부채 */}
           <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 16px", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <div>
-              <div style={{ fontSize:9, color:"#888888", fontWeight:700, letterSpacing:.8, marginBottom:4 }}>현재 총 부채</div>
+              <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:4, textAlign:"left" }}>현재 총 부채</div>
               <div style={{ fontSize:22, fontWeight:700, color:"#F04452" }}>{fmtM(totalDebt)}</div>
             </div>
             {debtChange !== null && (
@@ -922,11 +920,11 @@ function InvestTab({ monthly, active, raw }) {
           {/* 요약 카드 2개 */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
             <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
-              <div style={{ fontSize:9, color:"#00C471", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>투자자산</div>
+              <div style={{ fontSize:11, color:"#00C471", fontWeight:700, marginBottom:6 }}>투자자산</div>
               <div style={{ fontSize:20, fontWeight:700, color:"#00C471" }}>{fmtM(totalAsset)}</div>
             </div>
             <div style={{ background:"#EDE8E3", border:`1px solid ${investGain===null||investGain>=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 12px" }}>
-              <div style={{ fontSize:9, color:"#333333", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>전월 대비</div>
+              <div style={{ fontSize:11, color:"#333333", fontWeight:700, marginBottom:6 }}>전월 대비</div>
               <div style={{ fontSize:20, fontWeight:700, color:investGain===null?"#999999":investGain>=0?"#00C471":"#F04452" }}>
                 {investGain===null ? "-" : (investGain>=0?"+":"")+fmtM(investGain)}
               </div>
@@ -1044,7 +1042,7 @@ function AlertTab({ monthly, active, raw, privacy }) {
 
       {/* 총 지출 변화 요약 */}
       <div style={{ background:"#EDE8E3", border:`1px solid ${totalDiff===null||totalDiff<=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
-        <div style={{ fontSize:9, color:"#888888", fontWeight:700, letterSpacing:.8, marginBottom:8 }}>총 지출 전월 대비</div>
+        <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:8, textAlign:"left" }}>총 지출 전월 대비</div>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
             {totalDiff === null ? (
@@ -1256,6 +1254,21 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.6.7",
+    date: "2026-04-04",
+    items: [
+      "수입 세부내역 원중/혜지 각각 한 줄로 표시 (원중: 25일)",
+      "중분류 헤더 제거, 왼쪽 정렬",
+    ],
+  },
+  {
+    version: "1.6.6",
+    date: "2026-04-04",
+    items: [
+      "총 순자산/현재 총 부채/투자자산/지출분석 라벨 왼쪽 정렬 및 크기 통일",
+    ],
+  },
   {
     version: "1.6.5",
     date: "2026-04-04",
