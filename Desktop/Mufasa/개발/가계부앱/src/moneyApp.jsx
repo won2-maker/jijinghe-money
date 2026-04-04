@@ -156,7 +156,12 @@ function buildMonthly(raw) {
   const vg = raw.varGroups    || {};
   return MONTHS.map((month,i) => {
     const incomeTotal = Object.values(raw.income).reduce((s,a)=>s+(a[i]||0),0);
-    const income      = { total: incomeTotal };
+    // 급여/기타 분리
+    const income급여 = Object.entries(raw.income)
+      .filter(([uKey]) => (raw.incomeBGroup?.[uKey]||"") === "급여")
+      .reduce((s,[,a])=>s+(a[i]||0),0);
+    const income기타 = incomeTotal - income급여;
+    const income      = { total: incomeTotal, 급여: income급여, 기타: income기타 };
     const fixed       = Object.values(raw.fixed).reduce((s,a)=>s+(a[i]||0),0);
     const variable    = Object.values(raw.variable).reduce((s,a)=>s+(a[i]||0),0);
 
@@ -498,19 +503,19 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
 
 function TrendChart({ active, selIdx, setSelIdx, setOpen, privacy }) {
   const ALL_LINES = [
-    { key:"수입",    color:"#FF7E36", sensitive: true },
+    { key:"급여",     color:"#FF7E36", sensitive: true },
+    { key:"급여 외",  color:"#FFB347", sensitive: true },
     { key:"고정지출", color:"#F04452", sensitive: false },
     { key:"변동지출", color:"#8B5CF6", sensitive: false },
   ];
-  // privacy 모드면 수입 탭 숨기기
   const LINES = privacy ? ALL_LINES.filter(l => !l.sensitive) : ALL_LINES;
-  const [activeLine, setActiveLine] = useState("고정지출");
-  // privacy 켜질 때 수입 선택돼있으면 고정지출로 전환
+  const [activeLine, setActiveLine] = useState("급여");
   const curLine = LINES.find(l=>l.key===activeLine) || LINES[0];
 
   const lineData = active.map(a=>({
     name: a.month,
-    수입: a.income.total,
+    급여: a.income.급여,
+    "급여 외": a.income.기타,
     고정지출: a.fixed,
     변동지출: a.variable,
   }));
@@ -578,7 +583,8 @@ function YearTab({ monthly, active, raw, privacy }) {
 
   const barData = active.map(a=>({
     name: a.month,
-    수입: a.income.total,
+    급여: a.income.급여,
+    "급여 외": a.income.기타,
     고정지출: a.fixed,
     변동지출: a.variable,
   }));
@@ -633,13 +639,15 @@ function YearTab({ monthly, active, raw, privacy }) {
             <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
             <YAxis hide />
             <RechartTooltip content={<TT />} />
-            {!privacy && <Bar dataKey="수입" fill="#FF7E3688" name="수입" radius={[3,3,0,0]} />}
-            <Bar dataKey="고정지출" stackId="spend" fill="#F0445288" name="고정지출" />
-            <Bar dataKey="변동지출" stackId="spend" fill="#8B5CF688" name="변동지출" radius={[3,3,0,0]} />
+            {!privacy && <Bar dataKey="급여" stackId="income" fill="#FF7E36AA" name="급여" />}
+            {!privacy && <Bar dataKey="급여 외" stackId="income" fill="#FFB347AA" name="급여 외" radius={[3,3,0,0]} />}
+            <Bar dataKey="고정지출" stackId="spend" fill="#F04452AA" name="고정지출" />
+            <Bar dataKey="변동지출" stackId="spend" fill="#8B5CF6AA" name="변동지출" radius={[3,3,0,0]} />
           </BarChart>
         </ResponsiveContainer>
-        <div style={{ display:"flex", gap:12, justifyContent:"center", fontSize:10, color:"#666666", marginTop:6 }}>
-          {!privacy && <span><span style={{color:"#FF7E36"}}>■</span> 수입</span>}
+        <div style={{ display:"flex", gap:10, justifyContent:"center", fontSize:10, color:"#666666", marginTop:6, flexWrap:"wrap" }}>
+          {!privacy && <span><span style={{color:"#FF7E36"}}>■</span> 급여</span>}
+          {!privacy && <span><span style={{color:"#FFB347"}}>■</span> 급여 외</span>}
           <span><span style={{color:"#F04452"}}>■</span> 고정지출</span>
           <span><span style={{color:"#8B5CF6"}}>■</span> 변동지출</span>
         </div>
@@ -1177,6 +1185,15 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.6.0",
+    date: "2026-04-04",
+    items: [
+      "월별 추이 그래프 수입 급여/급여 외로 분리",
+      "전체 탭 바차트 급여+급여외 스택, 고정+변동 스택으로 수입/지출 비교",
+      "수입 막대가 먼저, 지출 막대가 오른쪽에 표시",
+    ],
+  },
   {
     version: "1.5.3",
     date: "2026-04-04",
