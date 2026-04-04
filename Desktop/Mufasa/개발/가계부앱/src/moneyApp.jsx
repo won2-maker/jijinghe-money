@@ -78,6 +78,11 @@ function parseRows(rows) {
     // 합계 행 스킵
     if ([aRaw,bRaw,cRaw,dCol].some(v => v.includes("합계"))) return;
 
+    // 순이익/저축/잔금 등 비집계 섹션 스킵
+    const skipSections = ["순이익", "저축", "잔금", "총 지출", "총 잔금"];
+    if (skipSections.some(s => [aRaw,bRaw].some(v => v.includes(s)))) return;
+    if (skipSections.some(s => lastA.includes(s) || lastB.includes(s))) return;
+
     if (lastA === "수익") {
       // D열 있으면 D열, 없으면 C열로 항목명 결정
       const itemName = dCol || lastC;
@@ -90,9 +95,10 @@ function parseRows(rows) {
     }
 
     if (lastA === "지출") {
-      if (!dCol) return;
-      // 중분류::소분류 유니크 키로 같은 이름 소분류 충돌 방지
-      const uKey = lastC ? `${lastC}::${dCol}` : dCol;
+      // D열 있으면 D열, 없으면 C열로 항목명 결정 (추가 지출 등 D열 없는 케이스 처리)
+      const itemName = dCol || lastC;
+      if (!itemName) return;
+      const uKey = lastC && dCol ? `${lastC}::${dCol}` : itemName;
       const groupName = (lastC === "주거" || lastC === "집 관리비") ? "집세" : lastC;
 
       if (lastB === "고정지출") {
@@ -1185,6 +1191,14 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.6.1",
+    date: "2026-04-04",
+    items: [
+      "변동지출 추가 지출 (D열 없는 항목) 집계 수정",
+      "순이익/저축 섹션이 지출로 잘못 집계되던 버그 수정",
+    ],
+  },
   {
     version: "1.6.0",
     date: "2026-04-04",
