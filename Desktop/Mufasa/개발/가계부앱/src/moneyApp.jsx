@@ -75,6 +75,9 @@ function parseRows(rows) {
     if (bRaw) lastB = bRaw;
     if (cRaw) lastC = cRaw;
 
+    // 헤더 행 스킵 (구분/대분류/중분류/소분류 같은 컬럼명)
+    if (aRaw === "구분" || dCol === "소분류") return;
+
     // 합계 행 스킵
     if ([aRaw,bRaw,cRaw,dCol].some(v => v.includes("합계"))) return;
 
