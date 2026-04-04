@@ -333,27 +333,36 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
 
         return (
           <div key={group} style={{ marginBottom:10 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
-              <span>{group}</span>
-              <span>{privacy?"●●●":fmt(adjustedTotal > 0 ? adjustedTotal : groupTotal)}</span>
-            </div>
-            {normalItems.map(({uKey, label, v}) => (
-              <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
-                <span>{label}</span>
-                <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(v)}</span>
+            {normalItems.length === 1 && mergedItems.length === 0 ? (
+              // 항목 1개면 중분류 헤더 없이 한 줄로
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0", borderBottom:"1px solid #DDD8D3" }}>
+                <span style={{ fontWeight:700, color }}>{group}</span>
+                <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(normalItems[0].v)}</span>
               </div>
-            ))}
-            {/* 통신비 참고용 표시 */}
-            {mergedItems.length > 0 && (
-              <div style={{ marginTop:4, padding:"4px 8px", background:"#E0DBD6", borderRadius:6 }}>
-                <div style={{ fontSize:9, color:"#999999", marginBottom:3 }}>KB카드에 포함 (참고)</div>
-                {mergedItems.map(({uKey, label, v}) => (
-                  <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#AAAAAA", padding:"2px 0" }}>
+            ) : (
+              <>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
+                  <span>{group}</span>
+                  <span>{privacy?"●●●":fmt(adjustedTotal > 0 ? adjustedTotal : groupTotal)}</span>
+                </div>
+                {normalItems.map(({uKey, label, v}) => (
+                  <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
                     <span>{label}</span>
-                    <span>{privacy?"●●●":fmt(v)}</span>
+                    <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(v)}</span>
                   </div>
                 ))}
-              </div>
+                {mergedItems.length > 0 && (
+                  <div style={{ marginTop:4, padding:"4px 8px", background:"#E0DBD6", borderRadius:6 }}>
+                    <div style={{ fontSize:9, color:"#999999", marginBottom:3 }}>KB카드에 포함 (참고)</div>
+                    {mergedItems.map(({uKey, label, v}) => (
+                      <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#AAAAAA", padding:"2px 0" }}>
+                        <span>{label}</span>
+                        <span>{privacy?"●●●":fmt(v)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         );
@@ -475,7 +484,13 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                           <span style={{ fontWeight:700, color:"#FF7E36" }}>{fmt(급여Total)}</span>
                         </div>
                       )}
-                      {기타Items.length > 0 && (
+                      {기타Items.length === 1 ? (
+                        // 항목 1개면 헤더 없이 한 줄
+                        <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                          <span style={{ fontWeight:700, color:"#FF7E36" }}>급여 외 소득</span>
+                          <span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(기타Items[0].v)}</span>
+                        </div>
+                      ) : 기타Items.length > 1 ? (
                         <div style={{ marginTop:8 }}>
                           <div style={{ fontSize:10, color:"#FF7E36", fontWeight:700, marginBottom:4, paddingBottom:3, borderBottom:"1px solid #FF7E3622" }}>급여 외 소득</div>
                           {기타Items.map(({label,v}) => (
@@ -484,7 +499,7 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                             </div>
                           ))}
                         </div>
-                      )}
+                      ) : null}
                     </>
                   );
                 })()}
