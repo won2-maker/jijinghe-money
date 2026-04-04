@@ -428,23 +428,35 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
               <div className="summary-3col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
                 <div onClick={()=>!privacy && toggle("income")} style={{ background:open==="income"?"#FF7E3618":"#EDE8E3", border:`1px solid ${open==="income"?"#FF7E36":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:privacy?"default":"pointer" }}>
                   <div style={{ fontSize:11, color:"#FF7E36", fontWeight:700, marginBottom:4 }}>수입</div>
-                  <div style={{ fontSize:15, fontWeight:700, color:"#FF7E36", marginBottom:4 }}>{privacy?"●●●":fmtM(m.income.total)}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#FF7E36", marginBottom:6 }}>{privacy?"●●●":fmtM(m.income.total)}</div>
                   {!privacy && (
-                    <div style={{ fontSize:9, color:"#888888" }}>
-                      <div>급여 {fmtM(급여합계)}</div>
-                      <div>기타 {fmtM(기타합계)}</div>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
+                      <div style={{ background:"#FF7E3612", borderRadius:6, padding:"4px 6px" }}>
+                        <div style={{ fontSize:8, color:"#FF7E36aa", marginBottom:1 }}>급여</div>
+                        <div style={{ fontSize:9, fontWeight:700, color:"#FF7E36" }}>{fmtM(급여합계)}</div>
+                      </div>
+                      <div style={{ background:"#FF7E3612", borderRadius:6, padding:"4px 6px" }}>
+                        <div style={{ fontSize:8, color:"#FF7E36aa", marginBottom:1 }}>기타</div>
+                        <div style={{ fontSize:9, fontWeight:700, color:"#FF7E36" }}>{fmtM(기타합계)}</div>
+                      </div>
                     </div>
                   )}
-                  <div style={{ fontSize:9, color:"#888888", marginTop:3 }}>{privacy?"":open==="income"?"▲":"▼ 세부"}</div>
+                  <div style={{ fontSize:9, color:"#888888", marginTop:4 }}>{privacy?"":open==="income"?"▲":"▼ 세부"}</div>
                 </div>
                 <div onClick={()=>toggle("fixed")} style={{ background:open==="fixed"?"#c96a6a18":"#EDE8E3", border:`1px solid ${open==="fixed"?"#F04452":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
                   <div style={{ fontSize:11, color:"#F04452", fontWeight:700, marginBottom:4 }}>고정지출</div>
-                  <div style={{ fontSize:15, fontWeight:700, color:"#F04452", marginBottom:4 }}>{fmtM(m.fixed)}</div>
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:"#888888" }}>
-                    <span>집세 {fmtM(m.fixedGroups["집세"]||0)}</span>
-                    <span>기타 {fmtM((m.fixed||0)-(m.fixedGroups["집세"]||0))}</span>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#F04452", marginBottom:6 }}>{fmtM(m.fixed)}</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
+                    <div style={{ background:"#F0445212", borderRadius:6, padding:"4px 6px" }}>
+                      <div style={{ fontSize:8, color:"#F04452aa", marginBottom:1 }}>집세</div>
+                      <div style={{ fontSize:9, fontWeight:700, color:"#F04452" }}>{fmtM(m.fixedGroups["집세"]||0)}</div>
+                    </div>
+                    <div style={{ background:"#F0445212", borderRadius:6, padding:"4px 6px" }}>
+                      <div style={{ fontSize:8, color:"#F04452aa", marginBottom:1 }}>기타</div>
+                      <div style={{ fontSize:9, fontWeight:700, color:"#F04452" }}>{fmtM((m.fixed||0)-(m.fixedGroups["집세"]||0))}</div>
+                    </div>
                   </div>
-                  <div style={{ fontSize:9, color:"#888888", marginTop:3 }}>{open==="fixed"?"▲":"▼"} 세부</div>
+                  <div style={{ fontSize:9, color:"#888888", marginTop:4 }}>{open==="fixed"?"▲":"▼"} 세부</div>
                 </div>
                 <div onClick={()=>toggle("variable")} style={{ background:open==="variable"?"#9b77c918":"#EDE8E3", border:`1px solid ${open==="variable"?"#8B5CF6":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
                   <div style={{ fontSize:11, color:"#8B5CF6", fontWeight:700, marginBottom:6 }}>변동지출</div>
@@ -665,24 +677,29 @@ function YearTab({ monthly, active, raw, privacy }) {
         sub={<div style={{ fontSize:10, color:"#333333" }}>연간 합계</div>}>
         <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
           {(() => {
-            const groups = {};
-            Object.entries(raw.income).forEach(([uKey,arr]) => {
-              const v = sum(arr); if (!v) return;
-              const cKey = raw.incomeGroupKeys?.[uKey] || "기타";
-              const label = uKey.includes("::") ? uKey.replace("::", ": ") : uKey;
-              if (!groups[cKey]) groups[cKey] = [];
-              groups[cKey].push({ label, v });
-            });
-            return Object.entries(groups).map(([cKey, items]) => (
-              <div key={cKey} style={{ marginBottom:8 }}>
-                <div style={{ fontSize:10, color:"#FF7E36", fontWeight:700, marginBottom:4, paddingBottom:3, borderBottom:"1px solid #FF7E3622" }}>{cKey}</div>
-                {items.map(({label,v}) => (
-                  <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
-                    <span>{label}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
-                  </div>
-                ))}
+            const ROW = (label, v) => (
+              <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"5px 0", borderBottom:"1px solid #DDD8D3" }}>
+                <span>{label}</span>
+                <span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
               </div>
-            ));
+            );
+            const 급여Items = Object.entries(raw.income)
+              .filter(([uKey]) => (raw.incomeBGroup?.[uKey]||"") === "급여")
+              .map(([uKey,arr]) => ({ label: uKey.includes("::") ? uKey.replace("::", ": ") : uKey, v: sum(arr) }))
+              .filter(x => x.v > 0);
+            const 기타Items = Object.entries(raw.income)
+              .filter(([uKey]) => (raw.incomeBGroup?.[uKey]||"") !== "급여")
+              .map(([uKey,arr]) => ({ label: uKey.includes("::") ? uKey.split("::")[1] : uKey, v: sum(arr) }))
+              .filter(x => x.v > 0);
+            return (
+              <>
+                {급여Items.map(({label,v}) => ROW(label, v))}
+                {기타Items.length === 1
+                  ? ROW("급여 외 소득", 기타Items[0].v)
+                  : 기타Items.map(({label,v}) => ROW(label, v))
+                }
+              </>
+            );
           })()}
         </div>
       </AccordionCard>
@@ -1254,6 +1271,14 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.6.8",
+    date: "2026-04-04",
+    items: [
+      "수입 세부내역 중분류 헤더 제거, 원중/혜지 한 줄 표시",
+      "월별 카드 급여/기타, 집세/기타 2분할 미니카드",
+    ],
+  },
   {
     version: "1.6.7",
     date: "2026-04-04",
