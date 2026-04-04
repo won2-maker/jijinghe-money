@@ -121,6 +121,7 @@ function buildGroups(raw, rows) {
 const sum    = arr => (arr||[]).reduce((a,b)=>a+b,0);
 const fwIdx  = (keys,src,i) => keys.reduce((s,k)=>s+(src[k]?.[i]||0),0);
 const fwAll  = (keys,src)   => keys.reduce((s,k)=>s+sum(src[k]),0);
+const mask   = (privacy) => privacy ? "●●●" : null; // 민감정보 마스킹
 
 function buildMonthly(raw) {
   const fg = raw.fixedGroups  || {};
@@ -250,17 +251,17 @@ function DetailPanel({ groups, src, monthIdx, color }) {
   );
 }
 
-function NetCard({ label, net, income, expense }) {
+function NetCard({ label, net, income, expense, privacy }) {
   const pos=net>=0;
   return (
-    <div style={{ background:"#FFFFFF", border:`1px solid ${pos?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+    <div style={{ background:"#EDE8E3", border:`1px solid ${pos?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
       <div>
-        <div style={{ fontSize:9, color:"#333333", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>{label}</div>
-        <div style={{ fontSize:22, fontWeight:700, color:pos?"#00C471":"#F04452" }}>{pos?"+":""}{fmt(net)}</div>
+        <div style={{ fontSize:9, color:"#888888", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>{label}</div>
+        <div style={{ fontSize:22, fontWeight:700, color:pos?"#00C471":"#F04452" }}>{privacy?"●●●":(pos?"+":"")+fmt(net)}</div>
       </div>
-      <div style={{ textAlign:"right", fontSize:11, color:"#444444" }}>
-        <div style={{ color:"#FF7E3688" }}>수입 {fmtM(income)}</div>
-        <div style={{ marginTop:2 }}>지출 {fmtM(expense)}</div>
+      <div style={{ textAlign:"right", fontSize:11, color:"#666666" }}>
+        <div style={{ color:"#FF7E3688" }}>수입 {privacy?"●●●":fmtM(income)}</div>
+        <div style={{ marginTop:2 }}>지출 {privacy?"●●●":fmtM(expense)}</div>
       </div>
     </div>
   );
@@ -269,7 +270,7 @@ function NetCard({ label, net, income, expense }) {
 // ─────────────────────────────────────────────
 // 탭: 월별
 // ─────────────────────────────────────────────
-function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMonth }) {
+function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMonth, privacy }) {
   const lastIdx = MONTHS.indexOf(active[active.length-1].month);
   const [selIdx, setSelIdx] = useState(lastIdx);
   const [open, setOpen]     = useState(null);
@@ -299,32 +300,32 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
         <div className="desktop-left">
           {/* 3칸 요약 카드 */}
           <div className="summary-3col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
-            <div onClick={()=>toggle("income")} style={{ background:open==="income"?"#FF7E3618":"#FFFFFF", border:`1px solid ${open==="income"?"#FF7E36":"#FF7E3633"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
+            <div onClick={()=>toggle("income")} style={{ background:open==="income"?"#FF7E3618":"#EDE8E3", border:`1px solid ${open==="income"?"#FF7E36":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
               <div style={{ fontSize:8, color:"#FF7E36", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>수입</div>
-              <div style={{ fontSize:15, fontWeight:700, color:"#FF7E36" }}>{fmtM(m.income.total)}</div>
-              <div style={{ fontSize:8, color:"#333333", marginTop:4 }}>{open==="income"?"▲":"▼"} 세부</div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#FF7E36" }}>{privacy?"●●●":fmtM(m.income.total)}</div>
+              <div style={{ fontSize:8, color:"#888888", marginTop:4 }}>{open==="income"?"▲":"▼"} 세부</div>
             </div>
-            <div onClick={()=>toggle("fixed")} style={{ background:open==="fixed"?"#c96a6a18":"#FFFFFF", border:`1px solid ${open==="fixed"?"#F04452":"#F0445233"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
+            <div onClick={()=>toggle("fixed")} style={{ background:open==="fixed"?"#c96a6a18":"#EDE8E3", border:`1px solid ${open==="fixed"?"#F04452":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
               <div style={{ fontSize:8, color:"#F04452", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>고정지출</div>
-              <div style={{ fontSize:15, fontWeight:700, color:"#F04452" }}>{fmtM(m.fixed)}</div>
-              <div style={{ fontSize:8, color:"#333333", marginTop:4 }}>{open==="fixed"?"▲":"▼"} 세부</div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#F04452" }}>{privacy?"●●●":fmtM(m.fixed)}</div>
+              <div style={{ fontSize:8, color:"#888888", marginTop:4 }}>{open==="fixed"?"▲":"▼"} 세부</div>
             </div>
-            <div onClick={()=>toggle("variable")} style={{ background:open==="variable"?"#9b77c918":"#FFFFFF", border:`1px solid ${open==="variable"?"#8B5CF6":"#8B5CF633"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
+            <div onClick={()=>toggle("variable")} style={{ background:open==="variable"?"#9b77c918":"#EDE8E3", border:`1px solid ${open==="variable"?"#8B5CF6":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
               <div style={{ fontSize:8, color:"#8B5CF6", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>변동지출</div>
-              <div style={{ fontSize:15, fontWeight:700, color:"#8B5CF6" }}>{fmtM(m.variable)}</div>
-              <div style={{ fontSize:8, color:"#333333", marginTop:4 }}>{open==="variable"?"▲":"▼"} 세부</div>
+              <div style={{ fontSize:15, fontWeight:700, color:"#8B5CF6" }}>{privacy?"●●●":fmtM(m.variable)}</div>
+              <div style={{ fontSize:8, color:"#888888", marginTop:4 }}>{open==="variable"?"▲":"▼"} 세부</div>
             </div>
           </div>
 
           {/* 세부내역 드로어 */}
           {open==="income" && (
             <div style={{ marginBottom:8 }}>
-              <div style={{ background:"#F5F0EB", border:"1px solid #e8c76a22", borderRadius:12, padding:"12px 14px" }}>
+              <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
                 {Object.entries(raw.income).map(([k,arr])=>{
                   const v = arr[selIdx]||0;
                   return v>0 ? (
-                    <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", padding:"4px 0", borderBottom:"1px solid #E8E0D8" }}>
-                      <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
+                    <div key={k} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                      <span>{k}</span><span style={{ fontWeight:600, color:"#FF7E36" }}>{privacy?"●●●":fmt(v)}</span>
                     </div>
                   ) : null;
                 })}
@@ -333,57 +334,57 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
           )}
           {open==="fixed" && (
             <div style={{ marginBottom:8 }}>
-              <DetailPanel groups={m.fixedGroups} src={{}} monthIdx={selIdx} color="#F04452" />
+              <DetailPanel groups={m.fixedGroups} src={{}} monthIdx={selIdx} color="#F04452" privacy={privacy} />
             </div>
           )}
           {open==="variable" && (
             <div style={{ marginBottom:8 }}>
-              <DetailPanel groups={m.varGroups} src={{}} monthIdx={selIdx} color="#8B5CF6" />
+              <DetailPanel groups={m.varGroups} src={{}} monthIdx={selIdx} color="#8B5CF6" privacy={privacy} />
             </div>
           )}
 
           {/* 순이익 */}
-          <NetCard label={`${m.month} 순이익`} net={m.순익} income={m.income.total} expense={m.fixed+m.variable} />
+          <NetCard label={`${m.month} 순이익`} net={m.순익} income={m.income.total} expense={m.fixed+m.variable} privacy={privacy} />
 
           {/* 총 순자산 */}
           <div style={{ marginBottom:16 }}>
             <div onClick={()=>toggle("networth")} style={{
-              background:"#FFFFFF", border:`1px solid ${netWorth>=0?"#00C47144":"#F0445244"}`,
+              background:"#EDE8E3", border:`1px solid ${netWorth>=0?"#00C47133":"#F0445233"}`,
               borderRadius:14, padding:"14px 16px", cursor:"pointer",
             }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div>
-                  <div style={{ fontSize:9, color:"#333333", fontWeight:700, letterSpacing:.8, marginBottom:8 }}>총 순자산</div>
+                  <div style={{ fontSize:9, color:"#888888", fontWeight:700, letterSpacing:.8, marginBottom:8 }}>총 순자산</div>
                   <div style={{ fontSize:24, fontWeight:700, color:netWorth>=0?"#00C471":"#F04452" }}>
-                    {netWorth>=0?"+":""}{fmtM(netWorth)}
+                    {privacy?"●●●":(netWorth>=0?"+":"")+fmtM(netWorth)}
                   </div>
                 </div>
                 <div style={{ textAlign:"right" }}>
                   {netWorthChange !== null && (
                     <div style={{ marginBottom:6 }}>
-                      <div style={{ fontSize:9, color:"#333333", marginBottom:3 }}>전월 대비</div>
+                      <div style={{ fontSize:9, color:"#888888", marginBottom:3 }}>전월 대비</div>
                       <div style={{ fontSize:13, fontWeight:700, color:netWorthChange>=0?"#00C471":"#F04452" }}>
                         <span style={{ fontSize:9 }}>{netWorthChange>=0?"▲ ":"▼ "}</span>
-                        {netWorthChange>=0?"+":""}{fmtM(Math.abs(netWorthChange))}
+                        {privacy?"●●●":(netWorthChange>=0?"+":"")+fmtM(Math.abs(netWorthChange))}
                       </div>
                     </div>
                   )}
-                  <div style={{ fontSize:9, color:"#333333", marginTop:4 }}>{open==="networth"?"▲ 닫기":"▼ 세부내역"}</div>
+                  <div style={{ fontSize:9, color:"#888888", marginTop:4 }}>{open==="networth"?"▲ 닫기":"▼ 세부내역"}</div>
                 </div>
               </div>
             </div>
             {open==="networth" && (
-              <div style={{ background:"#F5F0EB", border:"1px solid #6ac99722", borderRadius:12, padding:"12px 14px", marginTop:4 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", padding:"4px 0", borderBottom:"1px solid #E8E0D8" }}>
-                  <span>🏠 실물자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{fmtM(totalPhysical)}</span>
+              <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px", marginTop:4 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                  <span>🏠 실물자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{privacy?"●●●":fmtM(totalPhysical)}</span>
                 </div>
                 {totalFinancial > 0 && (
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#333333", padding:"4px 0", borderBottom:"1px solid #E8E0D8" }}>
-                    <span>📈 금융자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{fmtM(totalFinancial)}</span>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                    <span>📈 금융자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{privacy?"●●●":fmtM(totalFinancial)}</span>
                   </div>
                 )}
                 <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#F04452", padding:"6px 0 2px", fontWeight:600 }}>
-                  <span>🏦 부채</span><span>{fmtM(totalDebt)}</span>
+                  <span>🏦 부채</span><span>{privacy?"●●●":fmtM(totalDebt)}</span>
                 </div>
               </div>
             )}
@@ -392,10 +393,9 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
 
         {/* 오른쪽: 차트 영역 */}
         <div className="desktop-right">
-          {/* 추이 선 그래프 */}
           <TrendChart active={active} selIdx={selIdx} setSelIdx={setSelIdx} setOpen={setOpen} />
         </div>
-      </div>{/* desktop-2col end */}
+      </div>
     </div>
   );
 }
@@ -753,15 +753,15 @@ function InvestTab({ monthly, active, raw }) {
 // ─────────────────────────────────────────────
 // 탭: 지출 알림
 // ─────────────────────────────────────────────
-function AlertTab({ monthly, active, raw }) {
+function AlertTab({ monthly, active, raw, privacy }) {
   const lastIdx = MONTHS.indexOf(active[active.length-1].month);
   const [selIdx, setSelIdx] = useState(lastIdx);
+  const isLatest = selIdx === MONTHS.indexOf(active[active.length-1].month);
 
   const curM   = monthly[selIdx];
   const prevIdx = selIdx - 1;
   const prevM  = prevIdx >= 0 ? monthly[prevIdx] : null;
 
-  // 고정 + 변동 항목별 전월 대비 증감 계산
   const allSrc = { ...raw.fixed, ...raw.variable };
   const items = Object.entries(allSrc).map(([k, arr]) => {
     const cur  = arr[selIdx]  || 0;
@@ -774,12 +774,15 @@ function AlertTab({ monthly, active, raw }) {
   const decreased = items.filter(x => x.diff < 0 && x.prev > 0).sort((a,b) => a.diff - b.diff);
   const newItems  = items.filter(x => x.diff > 0 && x.prev === 0 && x.cur > 0);
 
-  // 총 지출 전월 대비
   const totalCur  = curM.fixed + curM.variable;
   const totalPrev = prevM ? prevM.fixed + prevM.variable : null;
   const totalDiff = totalPrev !== null ? totalCur - totalPrev : null;
 
-  const C = { up:"#F04452", down:"#00C471", new:"#8B5CF6", bg:"#FFFFFF", border:"#EDEDED" };
+  // 문구: 최신 달이면 "더 쓰고있어요/덜 쓰고있어요", 이전 달이면 "더 썼어요/덜 썼어요"
+  const spentMore = isLatest ? "더 쓰고있어요 📈" : "더 썼어요 📈";
+  const spentLess = isLatest ? "덜 쓰고있어요 📉" : "덜 썼어요 📉";
+
+  const C = { up:"#F04452", down:"#00C471", new:"#8B5CF6", border:"#DDD8D3" };
 
   const Row = ({ label, cur, prev, diff, color }) => {
     const pct = prev > 0 ? ((diff/prev)*100).toFixed(0) : null;
@@ -806,53 +809,58 @@ function AlertTab({ monthly, active, raw }) {
       <MonthTabs selIdx={selIdx} onSelect={setSelIdx} color="#F04452" active={active} />
 
       {/* 총 지출 변화 요약 */}
-      <div style={{ background:"#FFFFFF", border:`1px solid ${totalDiff===null||totalDiff<=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-        <div>
-          <div style={{ fontSize:9, color:"#888888", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>총 지출 전월 대비</div>
-          <div style={{ fontSize:22, fontWeight:700, color: totalDiff===null?"#1A1A1A":totalDiff>0?"#F04452":"#00C471" }}>
-            {totalDiff===null ? fmtM(totalCur) : (totalDiff>0?"+":"")+fmtM(totalDiff)}
+      <div style={{ background:"#EDE8E3", border:`1px solid ${totalDiff===null||totalDiff<=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
+        <div style={{ fontSize:9, color:"#888888", fontWeight:700, letterSpacing:.8, marginBottom:6 }}>총 지출 전월 대비</div>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div>
+            {totalDiff === null ? (
+              <div style={{ fontSize:20, fontWeight:700, color:"#1A1A1A" }}>{fmtM(totalCur)}</div>
+            ) : (
+              <>
+                <div style={{ fontSize:20, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471" }}>
+                  {totalDiff>0?"+":""}{fmtM(totalDiff)}
+                </div>
+                <div style={{ fontSize:12, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471", marginTop:4 }}>
+                  {totalDiff>0 ? spentMore : spentLess}
+                </div>
+              </>
+            )}
           </div>
+          {totalDiff !== null && (
+            <div style={{ textAlign:"right", fontSize:11, color:"#888888" }}>
+              <div>{fmtM(totalPrev)}</div>
+              <div style={{ fontSize:9, marginTop:2 }}>→ {fmtM(totalCur)}</div>
+            </div>
+          )}
         </div>
-        {totalDiff !== null && (
-          <div style={{ textAlign:"right", fontSize:11, color:"#888888" }}>
-            <div>{fmtM(totalPrev)}</div>
-            <div style={{ fontSize:9, marginTop:2 }}>→ {fmtM(totalCur)}</div>
-          </div>
-        )}
       </div>
 
       {prevM === null ? (
-        <div style={{ background:"#FFFFFF", border:"1px solid #EDEDED", borderRadius:14, padding:"24px", textAlign:"center", color:"#AAAAAA", fontSize:12 }}>
+        <div style={{ background:"#EDE8E3", borderRadius:14, padding:"24px", textAlign:"center", color:"#AAAAAA", fontSize:12 }}>
           비교할 전월 데이터가 없어요
         </div>
       ) : (
         <>
-          {/* 증가한 항목 */}
           {increased.length > 0 && (
-            <div style={{ background:"#FFFFFF", border:"1px solid #F0445222", borderRadius:14, padding:"14px", marginBottom:10 }}>
+            <div style={{ background:"#EDE8E3", border:"1px solid #F0445222", borderRadius:14, padding:"14px", marginBottom:10 }}>
               <div style={{ fontSize:10, color:"#F04452", fontWeight:700, marginBottom:4 }}>📈 늘어난 지출 ({increased.length}개)</div>
               {increased.map(x => <Row key={x.k} label={x.k} cur={x.cur} prev={x.prev} diff={x.diff} color={C.up} />)}
             </div>
           )}
-
-          {/* 신규 항목 */}
           {newItems.length > 0 && (
-            <div style={{ background:"#FFFFFF", border:"1px solid #8B5CF633", borderRadius:14, padding:"14px", marginBottom:10 }}>
+            <div style={{ background:"#EDE8E3", border:"1px solid #8B5CF633", borderRadius:14, padding:"14px", marginBottom:10 }}>
               <div style={{ fontSize:10, color:"#8B5CF6", fontWeight:700, marginBottom:4 }}>🆕 이번 달 새로 생긴 지출 ({newItems.length}개)</div>
               {newItems.map(x => <Row key={x.k} label={x.k} cur={x.cur} prev={0} diff={x.diff} color={C.new} />)}
             </div>
           )}
-
-          {/* 감소한 항목 */}
           {decreased.length > 0 && (
-            <div style={{ background:"#FFFFFF", border:"1px solid #00C47122", borderRadius:14, padding:"14px", marginBottom:10 }}>
+            <div style={{ background:"#EDE8E3", border:"1px solid #00C47122", borderRadius:14, padding:"14px", marginBottom:10 }}>
               <div style={{ fontSize:10, color:"#00C471", fontWeight:700, marginBottom:4 }}>📉 줄어든 지출 ({decreased.length}개)</div>
               {decreased.map(x => <Row key={x.k} label={x.k} cur={x.cur} prev={x.prev} diff={x.diff} color={C.down} />)}
             </div>
           )}
-
           {increased.length === 0 && newItems.length === 0 && (
-            <div style={{ background:"#FFFFFF", border:"1px solid #00C47133", borderRadius:14, padding:"24px", textAlign:"center" }}>
+            <div style={{ background:"#EDE8E3", border:"1px solid #00C47133", borderRadius:14, padding:"24px", textAlign:"center" }}>
               <div style={{ fontSize:20, marginBottom:8 }}>🎉</div>
               <div style={{ fontSize:13, color:"#00C471", fontWeight:700 }}>전월 대비 늘어난 지출이 없어요!</div>
             </div>
@@ -1003,13 +1011,32 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // ─────────────────────────────────────────────
 const CHANGELOG = [
   {
+    version: "1.1.0",
+    date: "2026-04-04",
+    items: [
+      "민감정보 가리기 탭 추가",
+      "지출 알림 문구 개선 (더 썼어요 / 덜 썼어요)",
+      "카드 배경색 개선",
+      "업데이트 로그 UI 소형화",
+    ],
+  },
+  {
+    version: "1.0.1",
+    date: "2026-04-04",
+    items: [
+      "A열 구분 기준 동적 파싱 (행 번호 하드코딩 완전 제거)",
+      "C열 중분류 기준 그룹핑 동적 생성",
+      "목업 문구 제거, 스크롤바 숨기기",
+      "업데이트 로그 패널 추가",
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2026-04-04",
     items: [
       "구글 시트 연동 (Apps Script 중계)",
       "월별·연간·부채·투자·지출알림 탭",
       "실물자산 시트 연동 및 순자산 계산",
-      "A열 구분 기준 동적 파싱 (행 번호 하드코딩 제거)",
       "반응형 레이아웃 (모바일/태블릿/데스크탑)",
       "Vercel 배포",
     ],
@@ -1018,23 +1045,21 @@ const CHANGELOG = [
 
 function ChangelogPanel() {
   const [expanded, setExpanded] = useState(false);
-  const latest   = CHANGELOG[0];
-  const older    = CHANGELOG.slice(1);
+  const latest = CHANGELOG[0];
+  const older  = CHANGELOG.slice(1);
 
   return (
-    <div style={{ margin:"32px 0 8px", borderTop:"1px solid #E8E0D8", paddingTop:20 }}>
-      <div style={{ fontSize:10, color:"#AAAAAA", fontWeight:700, letterSpacing:.8, marginBottom:12 }}>업데이트 기록</div>
+    <div style={{ margin:"24px 0 8px", borderTop:"1px solid #E8E0D8", paddingTop:14 }}>
+      <div style={{ fontSize:9, color:"#BBBBBB", fontWeight:700, letterSpacing:.8, marginBottom:8 }}>업데이트 기록</div>
 
       {/* 최신 버전 */}
-      <div style={{ background:"#FFFFFF", border:"1px solid #FF7E3622", borderRadius:12, padding:"12px 14px", marginBottom:8 }}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-          <span style={{ fontSize:12, fontWeight:700, color:"#FF7E36" }}>v{latest.version}</span>
-          <span style={{ fontSize:10, color:"#AAAAAA" }}>{latest.date}</span>
+      <div style={{ background:"#EDE8E3", borderRadius:10, padding:"8px 12px", marginBottom:6 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+          <span style={{ fontSize:10, fontWeight:700, color:"#FF7E36" }}>v{latest.version}</span>
+          <span style={{ fontSize:9, color:"#AAAAAA" }}>{latest.date}</span>
         </div>
         {latest.items.map((item,i)=>(
-          <div key={i} style={{ fontSize:11, color:"#555555", padding:"3px 0", borderBottom: i<latest.items.length-1?"1px solid #F5F0EB":"none" }}>
-            · {item}
-          </div>
+          <div key={i} style={{ fontSize:10, color:"#666666", padding:"2px 0" }}>· {item}</div>
         ))}
       </div>
 
@@ -1042,22 +1067,20 @@ function ChangelogPanel() {
       {older.length > 0 && (
         <>
           <button onClick={()=>setExpanded(p=>!p)} style={{
-            background:"transparent", border:"1px solid #E8E0D8", borderRadius:8,
-            color:"#AAAAAA", fontSize:11, padding:"6px 14px", cursor:"pointer",
-            fontFamily:"inherit", width:"100%", marginBottom:8,
+            background:"transparent", border:"none",
+            color:"#BBBBBB", fontSize:10, padding:"4px 0", cursor:"pointer",
+            fontFamily:"inherit", width:"100%", textAlign:"left",
           }}>
-            {expanded ? "▲ 접기" : `▼ 이전 업데이트 보기 (${older.length}개)`}
+            {expanded ? "▲ 접기" : `▼ 이전 업데이트 (${older.length}개)`}
           </button>
           {expanded && older.map(log=>(
-            <div key={log.version} style={{ background:"#FFFFFF", border:"1px solid #E8E0D8", borderRadius:12, padding:"12px 14px", marginBottom:8 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-                <span style={{ fontSize:12, fontWeight:700, color:"#888888" }}>v{log.version}</span>
-                <span style={{ fontSize:10, color:"#AAAAAA" }}>{log.date}</span>
+            <div key={log.version} style={{ background:"#E8E3DE", borderRadius:10, padding:"8px 12px", marginTop:4 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
+                <span style={{ fontSize:10, fontWeight:700, color:"#999999" }}>v{log.version}</span>
+                <span style={{ fontSize:9, color:"#AAAAAA" }}>{log.date}</span>
               </div>
               {log.items.map((item,i)=>(
-                <div key={i} style={{ fontSize:11, color:"#888888", padding:"3px 0", borderBottom: i<log.items.length-1?"1px solid #F5F0EB":"none" }}>
-                  · {item}
-                </div>
+                <div key={i} style={{ fontSize:10, color:"#888888", padding:"2px 0" }}>· {item}</div>
               ))}
             </div>
           ))}
@@ -1071,6 +1094,7 @@ export default function App() {
   const [tab,     setTab]     = useState("monthly");
   const [status,  setStatus]  = useState("ok");
   const [lastSync,setLastSync]= useState(new Date());
+  const [privacy, setPrivacy] = useState(false); // 민감정보 가리기
   const mockMonthly = buildMonthly(MOCK_RAW);
   const [raw,     setRaw]     = useState(MOCK_RAW);
   const [monthly, setMonthly] = useState(mockMonthly);
@@ -1174,6 +1198,14 @@ export default function App() {
           <div className="header-row" style={{ marginBottom:4 }}>
             <div className="header-logo" style={{ fontSize:18, fontWeight:800, letterSpacing:-.5, color:"#FF7E36" }}>💰 지중헤 Money</div>
             <div style={{ marginLeft:"auto", display:"flex", gap:6, flexShrink:0 }}>
+              <button onClick={()=>setPrivacy(p=>!p)} style={{
+                background: privacy?"#FF7E3622":"transparent",
+                border:`1px solid ${privacy?"#FF7E36":"#2a2a4a"}`,
+                borderRadius:8, color:privacy?"#FF7E36":"#888888",
+                fontSize:11, padding:"4px 10px", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap"
+              }}>
+                {privacy?"🔓 공개":"🔒 가리기"}
+              </button>
               <a href={`https://docs.google.com/spreadsheets/d/${SHEET_ID}`} target="_blank" rel="noopener noreferrer"
                 style={{ background:"transparent", border:"1px solid #2a2a4a", borderRadius:8, color:"#00C471", fontSize:11, padding:"4px 10px", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", textDecoration:"none" }}>
                 🏠 시트에서 수정
@@ -1231,11 +1263,11 @@ export default function App() {
           {/* 데이터 정상 */}
           {status==="ok" && raw && active.length>0 && (
             <>
-              {tab==="monthly" && <MonthlyTab monthly={monthly} active={active} raw={raw} totalPhysicalByMonth={totalPhysicalByMonth} totalDebtByMonth={totalDebtByMonth} />}
-              {tab==="year"    && <YearTab    monthly={monthly} active={active} raw={raw} />}
-              {tab==="debt"    && <DebtTab    monthly={monthly} active={active} raw={raw} />}
-              {tab==="invest"  && <InvestTab  monthly={monthly} active={active} raw={raw} />}
-              {tab==="alert"   && <AlertTab   monthly={monthly} active={active} raw={raw} />}
+              {tab==="monthly" && <MonthlyTab monthly={monthly} active={active} raw={raw} totalPhysicalByMonth={totalPhysicalByMonth} totalDebtByMonth={totalDebtByMonth} privacy={privacy} />}
+              {tab==="year"    && <YearTab    monthly={monthly} active={active} raw={raw} privacy={privacy} />}
+              {tab==="debt"    && <DebtTab    monthly={monthly} active={active} raw={raw} privacy={privacy} />}
+              {tab==="invest"  && <InvestTab  monthly={monthly} active={active} raw={raw} privacy={privacy} />}
+              {tab==="alert"   && <AlertTab   monthly={monthly} active={active} raw={raw} privacy={privacy} />}
             </>
           )}
 
