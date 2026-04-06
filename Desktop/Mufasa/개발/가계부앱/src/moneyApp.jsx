@@ -471,38 +471,41 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
             <div style={{ marginBottom:8 }}>
               <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
                 {(() => {
-                  const 급여Items = Object.entries(raw.income)
-                    .filter(([uKey]) => (raw.incomeBGroup?.[uKey]||"") === "급여")
-                    .map(([uKey, arr]) => ({
-                      label: uKey.includes("::") ? uKey.replace("::", ": ") : uKey,
-                      v: arr[selIdx]||0
-                    }))
+                  // 급여: C열(원중/혜지) 표시, 기타: "중분류: 소분류" 형식
+                  const allIncomeItems = Object.entries(raw.income)
+                    .map(([uKey, arr]) => {
+                      const bGroup = raw.incomeBGroup?.[uKey] || "기타";
+                      const v = arr[selIdx] || 0;
+                      const cLabel = uKey.includes("::") ? uKey.split("::")[0] : uKey; // C열
+                      const label = bGroup === "급여"
+                        ? cLabel                            // 원중 / 혜지
+                        : uKey.replace("::", ": ");         // 기타: 급여 외 소득
+                      return { bGroup, label, v };
+                    })
                     .filter(x => x.v > 0);
 
-                  const 기타Items = Object.entries(raw.income)
-                    .filter(([uKey]) => {
-                      const v = (raw.income[uKey]?.[selIdx]||0);
-                      return v > 0 && (raw.incomeBGroup?.[uKey]||"") !== "급여";
-                    })
-                    .map(([uKey, arr]) => ({
-                      label: uKey.includes("::") ? uKey.split("::")[1] : uKey,
-                      v: arr[selIdx]||0
-                    }));
+                  const 급여Items = allIncomeItems.filter(x => x.bGroup === "급여");
+                  const 기타Items = allIncomeItems.filter(x => x.bGroup !== "급여");
 
-                  const ROW = (label, v, bold=false) => (
-                    <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:11, color:"#555555", padding:"5px 0", borderBottom:"1px solid #DDD8D3" }}>
-                      <span style={{ fontWeight:bold?700:400, color:bold?"#FF7E36":"#555555" }}>{label}</span>
+                  const 급여Total = 급여Items.reduce((s,x) => s+x.v, 0);
+
+                  const ROW = (label, v, color="#555555") => (
+                    <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:11, padding:"5px 0", borderBottom:"1px solid #DDD8D3" }}>
+                      <span style={{ color }}>{label}</span>
                       <span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
                     </div>
                   );
 
                   return (
                     <>
+                      {/* 급여 그룹 헤더 */}
+                      {급여Items.length > 0 && (
+                        <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#FF7E36", fontWeight:700, paddingBottom:4, borderBottom:"1px solid #FF7E3633", marginBottom:2 }}>
+                          <span>급여</span><span>{fmt(급여Total)}</span>
+                        </div>
+                      )}
                       {급여Items.map(({label,v}) => ROW(label, v))}
-                      {기타Items.length === 1
-                        ? ROW("급여 외 소득", 기타Items[0].v, true)
-                        : 기타Items.map(({label,v}) => ROW(label, v))
-                      }
+                      {기타Items.map(({label,v}) => ROW(label, v, "#FF7E36"))}
                     </>
                   );
                 })()}
@@ -642,8 +645,12 @@ function YearTab({ monthly, active, raw, privacy }) {
               const v = sum(arr);
               if (v === 0) return;
               if (!groups[bGroup]) groups[bGroup] = [];
-              const subLabel = uKey.includes("::") ? uKey.split("::")[1] : uKey;
-              groups[bGroup].push({ subLabel, v });
+              // 급여: C열(원중/혜지), 기타: "중분류: 소분류"
+              const cLabel = uKey.includes("::") ? uKey.split("::")[0] : uKey;
+              const label = bGroup === "급여"
+                ? cLabel
+                : uKey.replace("::", ": ");
+              groups[bGroup].push({ label, v });
             });
             return Object.entries(groups).map(([groupName, items]) => {
               const groupTotal = items.reduce((s,x) => s+x.v, 0);
@@ -652,7 +659,7 @@ function YearTab({ monthly, active, raw, privacy }) {
                   <div key={groupName} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                       <span style={{ fontSize:11, color:"#FF7E36", fontWeight:700 }}>{groupName}</span>
-                      <span style={{ fontSize:10, color:"#AAAAAA" }}>{items[0].subLabel}</span>
+                      <span style={{ fontSize:10, color:"#AAAAAA" }}>{items[0].label}</span>
                     </div>
                     <span style={{ fontSize:11, fontWeight:600, color:"#FF7E36" }}>{fmt(items[0].v)}</span>
                   </div>
@@ -664,9 +671,9 @@ function YearTab({ monthly, active, raw, privacy }) {
                     <span>{groupName}</span>
                     <span>{fmt(groupTotal)}</span>
                   </div>
-                  {items.map(({subLabel, v}) => (
-                    <div key={subLabel} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
-                      <span>{subLabel}</span>
+                  {items.map(({label, v}) => (
+                    <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
+                      <span>{label}</span>
                       <span style={{ fontWeight:500, color:"#555555" }}>{fmt(v)}</span>
                     </div>
                   ))}
@@ -812,30 +819,38 @@ function DebtTab({ monthly, active, raw }) {
 
       <div className="desktop-2col">
         <div className="desktop-left">
-          <div style={{ background:"#EDE8E3", border:`1px solid ${debtChange!==null&&debtChange<0?"#6ac99755":debtChange!==null&&debtChange>0?"#c96a6a33":"transparent"}`, borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <div>
-                {debtChange !== null && debtChange < 0 ? (
-                  <>
-                    <div style={{ fontSize:11, color:"#6ac997aa", marginBottom:4 }}>🎉 이번 달 갚은 금액</div>
-                    <div style={{ fontSize:22, fontWeight:700, color:"#00C471" }}>{fmtM(Math.abs(debtChange))}</div>
-                    <div style={{ fontSize:10, color:"#00C47166", marginTop:2 }}>잘 하고 있어요 💪</div>
-                  </>
-                ) : debtChange !== null && debtChange > 0 ? (
-                  <>
-                    <div style={{ fontSize:11, color:"#F04452aa", marginBottom:4 }}>⚠ 이번 달 부채 증가</div>
-                    <div style={{ fontSize:22, fontWeight:700, color:"#F04452" }}>+{fmtM(debtChange)}</div>
-                  </>
-                ) : (
-                  <div style={{ fontSize:11, color:"#888888" }}>전월 데이터 없음</div>
-                )}
-              </div>
-              <div style={{ width:1, height:48, background:"#D8D3CE", margin:"0 14px", flexShrink:0 }} />
-              <div style={{ textAlign:"right" }}>
-                <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:4 }}>현재 총 부채</div>
-                <div style={{ fontSize:22, fontWeight:700, color:"#F04452" }}>{fmtM(totalDebt)}</div>
-              </div>
+          {/* 갚은 금액 카드 */}
+          <div style={{ background:"#EDE8E3", border:`1px solid ${debtChange!==null&&debtChange<0?"#6ac99755":debtChange!==null&&debtChange>0?"#c96a6a33":"transparent"}`, borderRadius:14, padding:"14px 16px", marginBottom:8 }}>
+            {debtChange !== null && debtChange < 0 ? (
+              <>
+                <div style={{ fontSize:11, color:"#6ac997aa", marginBottom:4 }}>🎉 이번 달 갚은 금액</div>
+                <div style={{ fontSize:22, fontWeight:700, color:"#00C471" }}>{fmtM(Math.abs(debtChange))}</div>
+                <div style={{ fontSize:10, color:"#00C47166", marginTop:2 }}>잘 하고 있어요 💪</div>
+              </>
+            ) : debtChange !== null && debtChange > 0 ? (
+              <>
+                <div style={{ fontSize:11, color:"#F04452aa", marginBottom:4 }}>⚠ 이번 달 부채 증가</div>
+                <div style={{ fontSize:22, fontWeight:700, color:"#F04452" }}>+{fmtM(debtChange)}</div>
+              </>
+            ) : (
+              <div style={{ fontSize:11, color:"#888888" }}>전월 데이터 없음</div>
+            )}
+          </div>
+
+          {/* 총 부채 카드 */}
+          <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 16px", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div>
+              <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:4 }}>현재 총 부채</div>
+              <div style={{ fontSize:22, fontWeight:700, color:"#F04452" }}>{fmtM(totalDebt)}</div>
             </div>
+            {debtChange !== null && (
+              <div style={{ textAlign:"right" }}>
+                <div style={{ fontSize:9, color:"#888888", marginBottom:4 }}>전월 대비</div>
+                <div style={{ fontSize:14, fontWeight:700, color:debtChange<=0?"#00C471":"#F04452" }}>
+                  {debtChange<=0?"▼":"▲"} {fmtM(Math.abs(debtChange))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px", marginBottom:12 }}>
@@ -869,15 +884,26 @@ function DebtTab({ monthly, active, raw }) {
         <div className="desktop-right">
           <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
             <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>부채 추이</div>
-            <ResponsiveContainer width="100%" height={160}>
-              <LineChart data={active.map(a=>({ name:a.month, 부채:a.totalDebt }))} onClick={d=>{ if(d?.activeLabel){ const i=MONTHS.indexOf(d.activeLabel); if(i>=0) setSelIdx(i); } }}>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={active.map(a=>({ name:a.month, 부채:a.totalDebt }))} onClick={d=>{ if(d?.activeLabel){ const i=MONTHS.indexOf(d.activeLabel); if(i>=0) setSelIdx(i); } }} margin={{ top:24, right:16, left:8, bottom:0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" vertical={false} />
                 <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={v=>fmtM(v)} tick={{ fill:"#AAAAAA", fontSize:8 }} axisLine={false} tickLine={false} width={50} domain={['auto','auto']} />
+                <YAxis tickFormatter={v=>fmtM(v)} tick={{ fill:"#AAAAAA", fontSize:8 }} axisLine={false} tickLine={false} width={52} domain={['auto','auto']} tickCount={4} />
                 <RechartTooltip content={<TT />} />
-                <Line type="monotone" dataKey="부채" name="부채"
-                  stroke="#F04452" strokeWidth={2} dot={{ fill:"#F04452", r:3, stroke:"#EDE8E3", strokeWidth:1 }}
-                  activeDot={{ r:6, fill:"#F04452", stroke:"#EDE8E3", strokeWidth:2 }}
+                <Line type="monotone" dataKey="부채" name="부채" stroke="#F04452" strokeWidth={2}
+                  dot={(props) => {
+                    const { cx, cy, payload } = props;
+                    const isSelected = payload.name === active[selIdx]?.month;
+                    return (
+                      <g key={payload.name}>
+                        <circle cx={cx} cy={cy} r={isSelected?6:4} fill={isSelected?"#F04452":"#EDE8E3"} stroke="#F04452" strokeWidth={2} />
+                        <text x={cx} y={cy-12} textAnchor="middle" fontSize={9} fill={isSelected?"#F04452":"#AAAAAA"} fontWeight={isSelected?700:400}>
+                          {fmtM(payload.부채)}
+                        </text>
+                      </g>
+                    );
+                  }}
+                  activeDot={{ r:7, fill:"#F04452", stroke:"#EDE8E3", strokeWidth:2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -1284,6 +1310,16 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.8.2",
+    date: "2026-04-07",
+    items: [
+      "수입 세부내역 급여: 원중/혜지(C열) 표시, 소분류(25일/5일) 제거",
+      "수입 세부내역 기타: '중분류: 소분류' 형식으로 변경",
+      "부채 탭 카드 분리 (갚은 금액 / 총 부채 별도 카드)",
+      "부채 그래프 꼭짓점 숫자 표기, Y축 기준선 명시",
+    ],
+  },
   {
     version: "1.8.1",
     date: "2026-04-06",
