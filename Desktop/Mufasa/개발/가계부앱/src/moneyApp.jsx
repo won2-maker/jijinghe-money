@@ -705,11 +705,11 @@ function YearTab({ monthly, active, raw, privacy }) {
           }));
 
           const NetDot = (props) => {
-            const { cx, cy, payload, value } = props;
+            const { cx, cy, value, color: dotColor } = props;
             const pos = value >= 0;
             return (
               <g>
-                <circle cx={cx} cy={cy} r={4} fill={pos?"#00C471":"#F04452"} stroke="#EDE8E3" strokeWidth={1.5} />
+                <circle cx={cx} cy={cy} r={4} fill={dotColor||(pos?"#00C471":"#F04452")} stroke="#EDE8E3" strokeWidth={1.5} />
               </g>
             );
           };
@@ -733,24 +733,47 @@ function YearTab({ monthly, active, raw, privacy }) {
                 </div>
               </div>
 
-              {/* 선그래프 */}
-              <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>월별 추이</div>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={lineData} margin={{ top:8, right:12, left:12, bottom:0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
-                  <YAxis hide tickFormatter={v=>fmtM(v)} />
-                  <RechartTooltip content={<TT />} />
-                  {!privacy && <Line type="monotone" dataKey="수입" name="수입" stroke="#FF7E36" strokeWidth={2} dot={false} activeDot={{ r:5, fill:"#FF7E36" }} />}
-                  <Line type="monotone" dataKey="지출" name="지출" stroke="#F04452" strokeWidth={2} dot={false} activeDot={{ r:5, fill:"#F04452" }} />
-                  <Line type="monotone" dataKey="순이익" name="순이익" stroke="#00C471" strokeWidth={2} strokeDasharray="5 3" dot={<NetDot />} activeDot={{ r:5, fill:"#00C471" }} />
-                </LineChart>
-              </ResponsiveContainer>
-              <div style={{ display:"flex", gap:10, justifyContent:"center", fontSize:10, color:"#666666", marginTop:8, flexWrap:"wrap" }}>
-                {!privacy && <span><span style={{color:"#FF7E36"}}>─</span> 수입</span>}
-                <span><span style={{color:"#F04452"}}>─</span> 지출</span>
-                <span><span style={{color:"#00C471"}}>╌</span> 순이익</span>
-              </div>
+              {/* 선그래프 - 하나씩 토글 */}
+              {(() => {
+                const ALL_LINES = [
+                  { key:"수입",   color:"#FF7E36", sensitive:true,  dash:undefined },
+                  { key:"지출",   color:"#F04452", sensitive:false, dash:undefined },
+                  { key:"순이익", color:"#00C471", sensitive:false, dash:"5 3" },
+                ];
+                const LINES = privacy ? ALL_LINES.filter(l=>!l.sensitive) : ALL_LINES;
+                const [activeLine, setActiveLine] = useState(LINES[0].key);
+                const curLine = LINES.find(l=>l.key===activeLine) || LINES[0];
+                return (
+                  <>
+                    <div style={{ display:"flex", gap:6, marginBottom:12 }}>
+                      {LINES.map(l=>(
+                        <button key={l.key} onClick={()=>setActiveLine(l.key)} style={{
+                          background: activeLine===l.key ? `${l.color}22` : "transparent",
+                          border: `1px solid ${activeLine===l.key ? l.color : "#C8C3BE"}`,
+                          borderRadius:8, color: activeLine===l.key ? l.color : "#777777",
+                          fontSize:11, padding:"4px 14px", cursor:"pointer",
+                          fontFamily:"inherit", fontWeight: activeLine===l.key ? 700 : 400,
+                        }}>{l.key}</button>
+                      ))}
+                    </div>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart data={lineData} margin={{ top:8, right:12, left:12, bottom:0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" vertical={false} />
+                        <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
+                        <YAxis hide tickFormatter={v=>fmtM(v)} />
+                        <RechartTooltip content={<TT />} />
+                        <Line
+                          type="monotone" dataKey={curLine.key} name={curLine.key}
+                          stroke={curLine.color} strokeWidth={2}
+                          strokeDasharray={curLine.dash}
+                          dot={<NetDot color={curLine.color} />}
+                          activeDot={{ r:5, fill:curLine.color }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </>
+                );
+              })()}
             </>
           );
         })()}
@@ -1261,6 +1284,13 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
+  {
+    version: "1.8.1",
+    date: "2026-04-06",
+    items: [
+      "전체 탭 선그래프 - 수입/지출/순이익 버튼으로 하나씩 전환",
+    ],
+  },
   {
     version: "1.8.0",
     date: "2026-04-06",
