@@ -840,38 +840,36 @@ function DebtTab({ monthly, active, raw }) {
       <div className="desktop-2col">
         <div className="desktop-left">
           {/* 갚은 금액 카드 */}
-          <div style={{ background:"#EDE8E3", border:`1px solid ${debtChange!==null&&debtChange<0?"#6ac99755":debtChange!==null&&debtChange>0?"#c96a6a33":"transparent"}`, borderRadius:14, padding:"14px 16px", marginBottom:8 }}>
-            {debtChange !== null && debtChange < 0 ? (
-              <>
-                <div style={{ fontSize:11, color:"#6ac997aa", marginBottom:4 }}>🎉 이번 달 갚은 금액</div>
-                <div style={{ fontSize:22, fontWeight:700, color:"#00C471" }}>{fmtM(Math.abs(debtChange))}</div>
-                <div style={{ fontSize:10, color:"#00C47166", marginTop:2 }}>잘 하고 있어요 💪</div>
-              </>
-            ) : debtChange !== null && debtChange > 0 ? (
-              <>
-                <div style={{ fontSize:11, color:"#F04452aa", marginBottom:4 }}>⚠ 이번 달 부채 증가</div>
-                <div style={{ fontSize:22, fontWeight:700, color:"#F04452" }}>+{fmtM(debtChange)}</div>
-              </>
-            ) : (
-              <div style={{ fontSize:11, color:"#888888" }}>전월 데이터 없음</div>
-            )}
-          </div>
-
-          {/* 총 부채 카드 */}
-          <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 16px", marginBottom:12, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-            <div>
-              <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:4 }}>현재 총 부채</div>
-              <div style={{ fontSize:22, fontWeight:700, color:"#F04452" }}>{fmtM(totalDebt)}</div>
-            </div>
-            {debtChange !== null && (
-              <div style={{ textAlign:"right" }}>
-                <div style={{ fontSize:9, color:"#888888", marginBottom:4 }}>전월 대비</div>
-                <div style={{ fontSize:14, fontWeight:700, color:debtChange<=0?"#00C471":"#F04452" }}>
-                  {debtChange<=0?"▼":"▲"} {fmtM(Math.abs(debtChange))}
-                </div>
-              </div>
-            )}
-          </div>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
+           <div style={{ background:"#EDE8E3", border:`1px solid ${debtChange!==null&&debtChange<0?"#6ac99755":debtChange!==null&&debtChange>0?"#c96a6a33":"transparent"}`, borderRadius:14, padding:"14px 12px" }}>
+            {debtChange !== null && debtChange < 0 ? (
+             <>
+              <div style={{ fontSize:11, color:"#6ac997aa", marginBottom:4 }}>🎉 이번 달 갚은 금액</div>
+              <div style={{ fontSize:20, fontWeight:700, color:"#00C471" }}>{fmtM(Math.abs(debtChange))}</div>
+              <div style={{ fontSize:10, color:"#00C47166", marginTop:2 }}>잘 하고 있어요 💪</div>
+             </>
+            ) : debtChange !== null && debtChange > 0 ? (
+             <>
+              <div style={{ fontSize:11, color:"#F04452aa", marginBottom:4 }}>⚠ 이번 달 부채 증가</div>
+              <div style={{ fontSize:20, fontWeight:700, color:"#F04452" }}>+{fmtM(debtChange)}</div>
+             </>
+            ) : (
+             <div style={{ fontSize:11, color:"#888888" }}>전월 데이터 없음</div>
+            )}
+           </div>
+           <div style={{ background:"#EDE8E3", border:`1px solid ${debtChange!==null&&debtChange<=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 12px" }}>
+            <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:6 }}>현재 총 부채</div>
+            <div style={{ fontSize:20, fontWeight:700, color:"#F04452", marginBottom:6 }}>{fmtM(totalDebt)}</div>
+            {debtChange !== null && (
+             <div>
+              <div style={{ fontSize:9, color:"#888888", marginBottom:3 }}>전월 대비</div>
+              <div style={{ fontSize:13, fontWeight:700, color:debtChange<=0?"#00C471":"#F04452" }}>
+               {debtChange<=0?"▼":"▲"} {fmtM(Math.abs(debtChange))}
+              </div>
+             </div>
+            )}
+           </div>
+          </div>
 
           <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px", marginBottom:12 }}>
            <div style={{ fontSize:10, color:"#F04452", fontWeight:700, marginBottom:12 }}>항목별 부채</div>
