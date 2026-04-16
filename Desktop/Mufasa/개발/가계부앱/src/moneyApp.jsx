@@ -471,21 +471,28 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
             <div style={{ marginBottom:8 }}>
               <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
                 {(() => {
-                  // 급여: C열(원중/혜지) 표시, 기타: "중분류: 소분류" 형식
-                  const allIncomeItems = Object.entries(raw.income)
-                    .map(([uKey, arr]) => {
-                      const bGroup = raw.incomeBGroup?.[uKey] || "기타";
-                      const v = arr[selIdx] || 0;
-                      const cLabel = uKey.includes("::") ? uKey.split("::")[0] : uKey; // C열
-                      const label = bGroup === "급여"
-                        ? cLabel                            // 원중 / 혜지
-                        : uKey.replace("::", ": ");         // 기타: 급여 외 소득
-                      return { bGroup, label, v };
-                    })
-                    .filter(x => x.v > 0);
+                  // 급여: C열(원중/혜지)로 그룹핑, 소분류(25일/5일) 제거
+                  // 기타: "중분류 소분류" 형식 (콜론 없이 공백)
+                  const 급여Map = {};
+                  Object.entries(raw.income)
+                   .filter(([uKey]) => (raw.incomeBGroup?.[uKey] || "") === "급여")
+                   .forEach(([uKey, arr]) => {
+                    const cLabel = uKey.includes("::") ? uKey.split("::")[0] : uKey;
+                    const v = arr[selIdx] || 0;
+                    if (!급여Map[cLabel]) 급여Map[cLabel] = 0;
+                    급여Map[cLabel] += v;
+                   });
+                  const 급여Items = Object.entries(급여Map)
+                   .filter(([,v]) => v > 0)
+                   .map(([label, v]) => ({ label, v }));
 
-                  const 급여Items = allIncomeItems.filter(x => x.bGroup === "급여");
-                  const 기타Items = allIncomeItems.filter(x => x.bGroup !== "급여");
+                  const 기타Items = Object.entries(raw.income)
+                   .filter(([uKey]) => (raw.incomeBGroup?.[uKey] || "") !== "급여")
+                   .map(([uKey, arr]) => ({
+                    label: uKey.includes("::") ? uKey.replace("::", " ") : uKey,
+                    v: arr[selIdx] || 0,
+                   }))
+                   .filter(x => x.v > 0);
 
                   const 급여Total = 급여Items.reduce((s,x) => s+x.v, 0);
 
@@ -601,7 +608,8 @@ function MonthlyBarChart({ active, selIdx, setSelIdx, privacy }) {
           onClick={d=>{ if(d?.activePayload){ setSelIdx(d.activePayload[0]?.payload?._idx ?? selIdx); } }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" vertical={false} />
           <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
-          <YAxis hide tickFormatter={v=>fmtM(v)} />
+          <YAxis tickFormatter={v=>fmtM(v)} tick={{ fill:"#AAAAAA", fontSize:8 }} axisLine={false} tickLine={false} width={50} tickCount={4} />
+
           <RechartTooltip content={<TT />} />
           {!privacy && <Bar dataKey="수입" stackId="income" fill="#FF7E36" name="수입" shape={<CustomBar />} radius={[3,3,0,0]} />}
           <Bar dataKey="고정지출" stackId="spend" fill="#F04452" name="고정지출" shape={<CustomBar />} />
@@ -639,19 +647,27 @@ function YearTab({ monthly, active, raw, privacy }) {
         sub={<div style={{ fontSize:10, color:"#333333" }}>연간 합계</div>}>
         <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
           {(() => {
+            // 급여: C열(원중/혜지)로 그룹핑, 소분류 제거 / 기타: "중분류 소분류" 공백 형식
             const groups = {};
+            const 급여MapY = {};
             Object.entries(raw.income).forEach(([uKey, arr]) => {
-              const bGroup = raw.incomeBGroup?.[uKey] || "기타";
-              const v = sum(arr);
-              if (v === 0) return;
-              if (!groups[bGroup]) groups[bGroup] = [];
-              // 급여: C열(원중/혜지), 기타: "중분류: 소분류"
-              const cLabel = uKey.includes("::") ? uKey.split("::")[0] : uKey;
-              const label = bGroup === "급여"
-                ? cLabel
-                : uKey.replace("::", ": ");
-              groups[bGroup].push({ label, v });
+             const bGroup = raw.incomeBGroup?.[uKey] || "기타";
+             const v = sum(arr);
+             if (v === 0) return;
+             if (bGroup === "급여") {
+              const cLabel = uKey.includes("::") ? uKey.split("::")[0] : uKey;
+              if (!급여MapY[cLabel]) 급여MapY[cLabel] = 0;
+              급여MapY[cLabel] += v;
+             } else {
+              const label = uKey.includes("::") ? uKey.replace("::", " ") : uKey;
+              if (!groups[bGroup]) groups[bGroup] = [];
+              groups[bGroup].push({ label, v });
+             }
             });
+            if (Object.keys(급여MapY).length > 0) {
+             groups["급여"] = Object.entries(급여MapY)
+              .filter(([,v]) => v > 0).map(([label, v]) => ({ label, v }));
+            }
             return Object.entries(groups).map(([groupName, items]) => {
               const groupTotal = items.reduce((s,x) => s+x.v, 0);
               if (items.length === 1) {
@@ -712,13 +728,17 @@ function YearTab({ monthly, active, raw, privacy }) {
           }));
 
           const NetDot = (props) => {
-            const { cx, cy, value, color: dotColor } = props;
-            const pos = value >= 0;
-            return (
-              <g>
-                <circle cx={cx} cy={cy} r={4} fill={dotColor||(pos?"#00C471":"#F04452")} stroke="#EDE8E3" strokeWidth={1.5} />
-              </g>
-            );
+           const { cx, cy, value, color: dotColor } = props;
+           const pos = value >= 0;
+           const col = dotColor || (pos ? "#00C471" : "#F04452");
+           return (
+            <g>
+             <circle cx={cx} cy={cy} r={4} fill={col} stroke="#EDE8E3" strokeWidth={1.5} />
+             <text x={cx} y={cy-10} textAnchor="middle" fontSize={9} fill={col} fontWeight={700}>
+              {value !== undefined && value !== null ? fmtM(value) : ""}
+             </text>
+            </g>
+           );
           };
 
           return (
@@ -853,32 +873,33 @@ function DebtTab({ monthly, active, raw }) {
             )}
           </div>
 
-          <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px", marginBottom:12 }}>
-            <div style={{ fontSize:10, color:"#F04452", fontWeight:700, marginBottom:12 }}>항목별 부채</div>
-            {debtItems.map(({k,v,prev},i)=>{
-              const pct    = totalDebt>0?(v/totalDebt*100).toFixed(0):0;
-              const change = selIdx>0 ? v-prev : null;
-              return (
-                <div key={k} style={{ marginBottom:14 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", marginBottom:4 }}>
-                    <span>{k}</span>
-                    <div style={{ textAlign:"right" }}>
-                      <span style={{ fontWeight:700 }}>{fmt(v)}</span>
-                      {change!==null && change!==0 && (
-                        <span style={{ fontSize:10, color:change<0?"#00C471":"#F04452", marginLeft:6 }}>
-                          {change<0?"↓":"↑"}{fmtM(Math.abs(change))}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ width:"100%", height:5, background:"#D8D3CE", borderRadius:3 }}>
-                    <div style={{ width:`${pct}%`, height:"100%", background:DC[i%DC.length], borderRadius:3 }}/>
-                  </div>
-                  <div style={{ fontSize:9, color:"#888888", marginTop:2 }}>{pct}%</div>
-                </div>
-              );
-            })}
-          </div>
+          {debtItems.map(({k,v,prev},i)=>{
+           const pct = totalDebt>0?(v/totalDebt*100).toFixed(0):0;
+           const change = selIdx>0 ? v-prev : null;
+           const DC_COL = ["#F04452","#d4855a","#c9a06a","#b8c96a","#6ab8c9","#6a7ec9","#a06ac9"];
+           return (
+            <div key={k} style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 16px", marginBottom:8 }}>
+             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+              <div>
+               <div style={{ fontSize:11, color:DC_COL[i%DC_COL.length], fontWeight:700, marginBottom:4 }}>{k}</div>
+               <div style={{ fontSize:18, fontWeight:700, color:"#F04452" }}>{fmt(v)}</div>
+              </div>
+              {change !== null && change !== 0 && (
+               <div style={{ textAlign:"right" }}>
+                <div style={{ fontSize:9, color:"#888888", marginBottom:3 }}>전월 대비</div>
+                <div style={{ fontSize:13, fontWeight:700, color:change<0?"#00C471":"#F04452" }}>
+                 {change<0?"↓":"↑"} {fmtM(Math.abs(change))}
+                </div>
+               </div>
+              )}
+             </div>
+             <div style={{ width:"100%", height:5, background:"#D8D3CE", borderRadius:3 }}>
+              <div style={{ width:`${pct}%`, height:"100%", background:DC_COL[i%DC_COL.length], borderRadius:3 }}/>
+             </div>
+             <div style={{ fontSize:9, color:"#888888", marginTop:2 }}>전체 부채의 {pct}%</div>
+            </div>
+           );
+          })}
         </div>
 
         <div className="desktop-right">
@@ -896,7 +917,7 @@ function DebtTab({ monthly, active, raw }) {
                     const isSelected = payload.name === active[selIdx]?.month;
                     return (
                       <g key={payload.name}>
-                        <circle cx={cx} cy={cy} r={isSelected?6:4} fill={isSelected?"#F04452":"#EDE8E3"} stroke="#F04452" strokeWidth={2} />
+                        <circle cx={cx} cy={cy} r={isSelected?6:4} fill={isSelected?"#F04452":"#fff"} stroke="#F04452" strokeWidth={2} />
                         <text x={cx} y={cy-12} textAnchor="middle" fontSize={9} fill={isSelected?"#F04452":"#AAAAAA"} fontWeight={isSelected?700:400}>
                           {fmtM(payload.부채)}
                         </text>
@@ -1310,7 +1331,17 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
 // 업데이트 로그
 // ─────────────────────────────────────────────
 const CHANGELOG = [
-  {
+   {
+    version: "1.9.0",
+    date: "2026-04-17",
+    items: [
+     "수입 세부내역: 급여 C열(원중/혜지)로 그룹핑, 소분류(25일/5일) 제거",
+     "수입 세부내역: 기타 항목 '중분류 소분류' 공백 형식 (콜론 제거)",
+     "부채 탭: 항목별 개별 카드로 분리",
+     "전체 탭 선그래프: 꼭짓점 숫자 표기, Y축 기준선 표시",
+    ],
+   },
+   {
     version: "1.8.2",
     date: "2026-04-07",
     items: [
