@@ -1120,32 +1120,29 @@ function AlertTab({ monthly, active, raw, privacy }) {
     <div>
       <MonthTabs selIdx={selIdx} onSelect={setSelIdx} color="#F04452" active={active} />
 
-      <div style={{ background:"#EDE8E3", border:`1px solid ${totalDiff===null||totalDiff<=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
-        <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:8, textAlign:"left" }}>총 지출 전월 대비</div>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div>
-            {totalDiff === null ? (
-              <div style={{ fontSize:22, fontWeight:700, color:"#1A1A1A" }}>{fmtM(totalCur)}</div>
-            ) : (
-              <>
-                <div style={{ fontSize:24, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471", marginBottom:4 }}>
-                  {fmtM(Math.abs(totalDiff))}
-                </div>
-                <div style={{ fontSize:13, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471" }}>
-                  {totalDiff>0 ? spentMore : spentLess}
-                </div>
-              </>
-            )}
-          </div>
-          {totalDiff !== null && (
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontSize:10, color:"#888888", marginBottom:4 }}>이번 달 총 지출</div>
-              <div style={{ fontSize:18, fontWeight:700, color:"#1A1A1A" }}>{fmtM(totalCur)}</div>
-              <div style={{ fontSize:10, color:"#AAAAAA", marginTop:2 }}>전월 {fmtM(totalPrev)}</div>
-            </div>
-          )}
-        </div>
-      </div>
+      {totalDiff === null ? (
+       <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
+        <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:8 }}>총 지출 전월 대비</div>
+        <div style={{ fontSize:22, fontWeight:700, color:"#1A1A1A" }}>{fmtM(totalCur)}</div>
+       </div>
+      ) : (
+       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
+        <div style={{ background:"#EDE8E3", border:`1px solid ${totalDiff<=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 12px" }}>
+         <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:6 }}>전월 대비</div>
+         <div style={{ fontSize:20, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471", marginBottom:4 }}>
+          {fmtM(Math.abs(totalDiff))}
+         </div>
+         <div style={{ fontSize:12, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471" }}>
+          {totalDiff>0 ? spentMore : spentLess}
+         </div>
+        </div>
+        <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
+         <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:6 }}>이번 달 총 지출</div>
+         <div style={{ fontSize:20, fontWeight:700, color:"#1A1A1A", marginBottom:4 }}>{fmtM(totalCur)}</div>
+         <div style={{ fontSize:10, color:"#AAAAAA" }}>전월 {fmtM(totalPrev)}</div>
+        </div>
+       </div>
+      )}
 
       {prevM === null ? (
         <div style={{ background:"#EDE8E3", borderRadius:14, padding:"24px", textAlign:"center", color:"#AAAAAA", fontSize:12 }}>
