@@ -873,33 +873,32 @@ function DebtTab({ monthly, active, raw }) {
             )}
           </div>
 
-          {debtItems.map(({k,v,prev},i)=>{
-           const pct = totalDebt>0?(v/totalDebt*100).toFixed(0):0;
-           const change = selIdx>0 ? v-prev : null;
-           const DC_COL = ["#F04452","#d4855a","#c9a06a","#b8c96a","#6ab8c9","#6a7ec9","#a06ac9"];
-           return (
-            <div key={k} style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 16px", marginBottom:8 }}>
-             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
-              <div>
-               <div style={{ fontSize:11, color:DC_COL[i%DC_COL.length], fontWeight:700, marginBottom:4 }}>{k}</div>
-               <div style={{ fontSize:18, fontWeight:700, color:"#F04452" }}>{fmt(v)}</div>
-              </div>
-              {change !== null && change !== 0 && (
-               <div style={{ textAlign:"right" }}>
-                <div style={{ fontSize:9, color:"#888888", marginBottom:3 }}>전월 대비</div>
-                <div style={{ fontSize:13, fontWeight:700, color:change<0?"#00C471":"#F04452" }}>
-                 {change<0?"↓":"↑"} {fmtM(Math.abs(change))}
-                </div>
-               </div>
-              )}
-             </div>
-             <div style={{ width:"100%", height:5, background:"#D8D3CE", borderRadius:3 }}>
-              <div style={{ width:`${pct}%`, height:"100%", background:DC_COL[i%DC_COL.length], borderRadius:3 }}/>
-             </div>
-             <div style={{ fontSize:9, color:"#888888", marginTop:2 }}>전체 부채의 {pct}%</div>
-            </div>
-           );
-          })}
+          <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px", marginBottom:12 }}>
+           <div style={{ fontSize:10, color:"#F04452", fontWeight:700, marginBottom:12 }}>항목별 부채</div>
+           {debtItems.map(({k,v,prev},i)=>{
+            const pct    = totalDebt>0?(v/totalDebt*100).toFixed(0):0;
+            const change = selIdx>0 ? v-prev : null;
+            return (
+             <div key={k} style={{ marginBottom:14 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", marginBottom:4 }}>
+               <span>{k}</span>
+               <div style={{ textAlign:"right" }}>
+                <span style={{ fontWeight:700 }}>{fmt(v)}</span>
+                {change!==null && change!==0 && (
+                 <span style={{ fontSize:10, color:change<0?"#00C471":"#F04452", marginLeft:6 }}>
+                  {change<0?"↓":"↑"}{fmtM(Math.abs(change))}
+                 </span>
+                )}
+               </div>
+              </div>
+              <div style={{ width:"100%", height:5, background:"#D8D3CE", borderRadius:3 }}>
+               <div style={{ width:`${pct}%`, height:"100%", background:DC[i%DC.length], borderRadius:3 }}/>
+              </div>
+              <div style={{ fontSize:9, color:"#888888", marginTop:2 }}>{pct}%</div>
+             </div>
+            );
+           })}
+          </div>
         </div>
 
         <div className="desktop-right">
