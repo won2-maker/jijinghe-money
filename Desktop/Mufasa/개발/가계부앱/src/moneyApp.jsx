@@ -225,7 +225,7 @@ const fmtM = n => {
 const TT = ({ active:a, payload, label }) => {
   if (!a||!payload?.length) return null;
   return (
-    <div style={{ background:"#EDEDED", border:"1px solid #ffffff15", borderRadius:8, padding:"8px 12px", fontSize:11 }}>
+    <div style={{ background:"#EDEDED", border:"1px solid #ffffff15", borderRadius:8, padding:"8px 12px", fontSize:13 }}>
       <div style={{ color:"#FF7E36", fontWeight:700, marginBottom:4 }}>{label}</div>
       {payload.map((p,i)=><div key={i} style={{ color:p.color||"#ccc", marginBottom:1 }}>{p.name}: {fmt(p.value)}</div>)}
     </div>
@@ -242,7 +242,7 @@ function MonthTabs({ selIdx, onSelect, color="#FF7E36", active }) {
             flexShrink:0, background:on?`${color}18`:"#FFFFFF",
             border:`1px solid ${on?color:"#D5D5D5"}`,
             borderRadius:8, color:on?color:"#333333",
-            padding:"6px 16px", fontSize:13, cursor:"pointer",
+            padding:"6px 16px", fontSize:14, cursor:"pointer",
             fontFamily:"inherit", fontWeight:on?700:400,
           }}>{a.month}</button>
         );
@@ -261,14 +261,14 @@ function AccordionCard({ label, value, color, sub, isOpen, onToggle, children })
       }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
-            <div style={{ fontSize:11, color, fontWeight:700, marginBottom:6, textAlign:"left" }}>{label}</div>
+            <div style={{ fontSize:13, color, fontWeight:700, marginBottom:6, textAlign:"left" }}>{label}</div>
             <div style={{ fontSize:20, fontWeight:700, color:isOpen?color:"#1A1A1A", textAlign:"left" }}>
               {typeof value === "string" ? value : fmt(value)}
             </div>
           </div>
           <div style={{ textAlign:"right" }}>
             {sub}
-            <div style={{ fontSize:9, color, marginTop:6 }}>{isOpen?"▲ 닫기":"▼ 세부내역"}</div>
+            <div style={{ fontSize:13, color, marginTop:6 }}>{isOpen?"▲ 닫기":"▼ 세부내역"}</div>
           </div>
         </div>
       </div>
@@ -331,23 +331,23 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
             {normalItems.length === 1 && mergedItems.length === 0 ? (
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                  <span style={{ fontSize:11, color, fontWeight:700 }}>{group}</span>
+                  <span style={{ fontSize:13, color, fontWeight:700 }}>{group}</span>
                   {getSubLabel(normalItems[0].uKey) && (
-                    <span style={{ fontSize:10, color:"#AAAAAA" }}>{getSubLabel(normalItems[0].uKey)}</span>
+                    <span style={{ fontSize:12, color:"#AAAAAA" }}>{getSubLabel(normalItems[0].uKey)}</span>
                   )}
                 </div>
-                <span style={{ fontSize:11, fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(normalItems[0].v)}</span>
+                <span style={{ fontSize:13, fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(normalItems[0].v)}</span>
               </div>
             ) : (
               <>
-                <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color, fontWeight:700, marginBottom:4, paddingBottom:4, borderBottom:`1px solid ${color}22` }}>
                   <span>{group}</span>
                   <span>{privacy?"●●●":fmt(adjustedTotal > 0 ? adjustedTotal : groupTotal)}</span>
                 </div>
                 {normalItems.map(({uKey, label, v}) => {
                   const suffix = label.includes("(통신비 포함)") ? " (통신비 포함)" : "";
                   return (
-                    <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
+                    <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
                       <span>{getSubLabel(uKey) || uKey}{suffix}</span>
                       <span style={{ fontWeight:500, color:"#555555" }}>{privacy?"●●●":fmt(v)}</span>
                     </div>
@@ -355,9 +355,9 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
                 })}
                 {mergedItems.length > 0 && (
                   <div style={{ marginTop:4, padding:"4px 8px", background:"#E0DBD6", borderRadius:6 }}>
-                    <div style={{ fontSize:9, color:"#999999", marginBottom:3 }}>KB카드에 포함 (참고)</div>
+                    <div style={{ fontSize:13, color:"#999999", marginBottom:3 }}>KB카드에 포함 (참고)</div>
                     {mergedItems.map(({uKey, v}) => (
-                      <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:10, color:"#AAAAAA", padding:"2px 0" }}>
+                      <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:"#AAAAAA", padding:"2px 0" }}>
                         <span>{getSubLabel(uKey) || uKey}</span>
                         <span>{privacy?"●●●":fmt(v)}</span>
                       </div>
@@ -378,10 +378,10 @@ function NetCard({ label, net, income, expense, privacy }) {
   return (
     <div style={{ background:"#EDE8E3", border:`1px solid ${pos?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
       <div style={{ textAlign:"left" }}>
-        <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:6 }}>{label}</div>
+        <div style={{ fontSize:13, color:"#888888", fontWeight:700, marginBottom:6 }}>{label}</div>
         <div style={{ fontSize:22, fontWeight:700, color:pos?"#00C471":"#F04452" }}>{privacy?"●●●":(pos?"+":"")+fmt(net)}</div>
       </div>
-      <div style={{ textAlign:"right", fontSize:11, color:"#666666" }}>
+      <div style={{ textAlign:"right", fontSize:13, color:"#666666" }}>
         <div style={{ color:"#FF7E3688" }}>수입 {privacy?"●●●":fmtM(income)}</div>
         <div style={{ marginTop:2 }}>지출 {privacy?"●●●":fmtM(expense)}</div>
       </div>
@@ -427,41 +427,41 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
             return (
               <div className="summary-3col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
                 <div onClick={()=>!privacy && toggle("income")} style={{ background:open==="income"?"#FF7E3618":"#EDE8E3", border:`1px solid ${open==="income"?"#FF7E36":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:privacy?"default":"pointer" }}>
-                  <div style={{ fontSize:11, color:"#FF7E36", fontWeight:700, marginBottom:4 }}>수입</div>
+                  <div style={{ fontSize:13, color:"#FF7E36", fontWeight:700, marginBottom:4 }}>수입</div>
                   <div style={{ fontSize:15, fontWeight:700, color:"#FF7E36", marginBottom:6 }}>{privacy?"●●●":fmtM(m.income.total)}</div>
                   {!privacy && (
                     <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
                       <div style={{ background:"#FF7E3612", borderRadius:6, padding:"5px 6px" }}>
-                        <div style={{ fontSize:9, color:"#FF7E36aa", marginBottom:2 }}>급여</div>
-                        <div style={{ fontSize:10, fontWeight:700, color:"#FF7E36" }}>{fmtM(급여합계)}</div>
+                        <div style={{ fontSize:13, color:"#FF7E36aa", marginBottom:2 }}>급여</div>
+                        <div style={{ fontSize:12, fontWeight:700, color:"#FF7E36" }}>{fmtM(급여합계)}</div>
                       </div>
                       <div style={{ background:"#FF7E3612", borderRadius:6, padding:"5px 6px" }}>
-                        <div style={{ fontSize:9, color:"#FF7E36aa", marginBottom:2 }}>기타</div>
-                        <div style={{ fontSize:10, fontWeight:700, color:"#FF7E36" }}>{fmtM(기타합계)}</div>
+                        <div style={{ fontSize:13, color:"#FF7E36aa", marginBottom:2 }}>기타</div>
+                        <div style={{ fontSize:12, fontWeight:700, color:"#FF7E36" }}>{fmtM(기타합계)}</div>
                       </div>
                     </div>
                   )}
-                  <div style={{ fontSize:9, color:"#888888", marginTop:4 }}>{privacy?"":open==="income"?"▲":"▼ 세부"}</div>
+                  <div style={{ fontSize:13, color:"#888888", marginTop:4 }}>{privacy?"":open==="income"?"▲":"▼ 세부"}</div>
                 </div>
                 <div onClick={()=>toggle("fixed")} style={{ background:open==="fixed"?"#c96a6a18":"#EDE8E3", border:`1px solid ${open==="fixed"?"#F04452":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
-                  <div style={{ fontSize:11, color:"#F04452", fontWeight:700, marginBottom:4 }}>고정지출</div>
+                  <div style={{ fontSize:13, color:"#F04452", fontWeight:700, marginBottom:4 }}>고정지출</div>
                   <div style={{ fontSize:15, fontWeight:700, color:"#F04452", marginBottom:6 }}>{fmtM(m.fixed)}</div>
                   <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:4 }}>
                     <div style={{ background:"#F0445212", borderRadius:6, padding:"5px 6px" }}>
-                      <div style={{ fontSize:9, color:"#F04452aa", marginBottom:2 }}>집세</div>
-                      <div style={{ fontSize:10, fontWeight:700, color:"#F04452" }}>{fmtM(m.fixedGroups["집세"]||0)}</div>
+                      <div style={{ fontSize:13, color:"#F04452aa", marginBottom:2 }}>집세</div>
+                      <div style={{ fontSize:12, fontWeight:700, color:"#F04452" }}>{fmtM(m.fixedGroups["집세"]||0)}</div>
                     </div>
                     <div style={{ background:"#F0445212", borderRadius:6, padding:"5px 6px" }}>
-                      <div style={{ fontSize:9, color:"#F04452aa", marginBottom:2 }}>기타</div>
-                      <div style={{ fontSize:10, fontWeight:700, color:"#F04452" }}>{fmtM((m.fixed||0)-(m.fixedGroups["집세"]||0))}</div>
+                      <div style={{ fontSize:13, color:"#F04452aa", marginBottom:2 }}>기타</div>
+                      <div style={{ fontSize:12, fontWeight:700, color:"#F04452" }}>{fmtM((m.fixed||0)-(m.fixedGroups["집세"]||0))}</div>
                     </div>
                   </div>
-                  <div style={{ fontSize:9, color:"#888888", marginTop:4 }}>{open==="fixed"?"▲":"▼"} 세부</div>
+                  <div style={{ fontSize:13, color:"#888888", marginTop:4 }}>{open==="fixed"?"▲":"▼"} 세부</div>
                 </div>
                 <div onClick={()=>toggle("variable")} style={{ background:open==="variable"?"#9b77c918":"#EDE8E3", border:`1px solid ${open==="variable"?"#8B5CF6":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
-                  <div style={{ fontSize:11, color:"#8B5CF6", fontWeight:700, marginBottom:6 }}>변동지출</div>
+                  <div style={{ fontSize:13, color:"#8B5CF6", fontWeight:700, marginBottom:6 }}>변동지출</div>
                   <div style={{ fontSize:15, fontWeight:700, color:"#8B5CF6" }}>{fmtM(m.variable)}</div>
-                  <div style={{ fontSize:9, color:"#888888", marginTop:4 }}>{open==="variable"?"▲":"▼"} 세부</div>
+                  <div style={{ fontSize:13, color:"#888888", marginTop:4 }}>{open==="variable"?"▲":"▼"} 세부</div>
                 </div>
               </div>
             );
@@ -497,7 +497,7 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                   const 급여Total = 급여Items.reduce((s,x) => s+x.v, 0);
 
                   const ROW = (label, v, color="#555555") => (
-                    <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:11, padding:"5px 0", borderBottom:"1px solid #DDD8D3" }}>
+                    <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13, padding:"5px 0", borderBottom:"1px solid #DDD8D3" }}>
                       <span style={{ color }}>{label}</span>
                       <span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
                     </div>
@@ -507,7 +507,7 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                     <>
                       {/* 급여 그룹 헤더 */}
                       {급여Items.length > 0 && (
-                        <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#FF7E36", fontWeight:700, paddingBottom:4, borderBottom:"1px solid #FF7E3633", marginBottom:2 }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#FF7E36", fontWeight:700, paddingBottom:4, borderBottom:"1px solid #FF7E3633", marginBottom:2 }}>
                           <span>급여</span><span>{fmt(급여Total)}</span>
                         </div>
                       )}
@@ -539,7 +539,7 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
             }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                 <div style={{ textAlign:"left" }}>
-                  <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:8 }}>총 순자산</div>
+                  <div style={{ fontSize:13, color:"#888888", fontWeight:700, marginBottom:8 }}>총 순자산</div>
                   <div style={{ fontSize:24, fontWeight:700, color:netWorth>=0?"#00C471":"#F04452" }}>
                     {fmtM(netWorth)}
                   </div>
@@ -547,28 +547,28 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                 <div style={{ textAlign:"right" }}>
                   {netWorthChange !== null && (
                     <div style={{ marginBottom:6 }}>
-                      <div style={{ fontSize:9, color:"#888888", marginBottom:3 }}>전월 대비</div>
+                      <div style={{ fontSize:13, color:"#888888", marginBottom:3 }}>전월 대비</div>
                       <div style={{ fontSize:13, fontWeight:700, color:netWorthChange>=0?"#00C471":"#F04452" }}>
-                        <span style={{ fontSize:9 }}>{netWorthChange>=0?"▲ ":"▼ "}</span>
+                        <span style={{ fontSize:13 }}>{netWorthChange>=0?"▲ ":"▼ "}</span>
                         {privacy?"●●●":(netWorthChange>=0?"+":"")+fmtM(Math.abs(netWorthChange))}
                       </div>
                     </div>
                   )}
-                  <div style={{ fontSize:9, color:"#888888", marginTop:4 }}>{open==="networth"?"▲ 닫기":"▼ 세부내역"}</div>
+                  <div style={{ fontSize:13, color:"#888888", marginTop:4 }}>{open==="networth"?"▲ 닫기":"▼ 세부내역"}</div>
                 </div>
               </div>
             </div>
             {open==="networth" && (
               <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px", marginTop:4 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
                   <span>🏠 실물자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{fmtM(totalPhysical)}</span>
                 </div>
                 {totalFinancial > 0 && (
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#555555", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
                     <span>📈 금융자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{fmtM(totalFinancial)}</span>
                   </div>
                 )}
-                <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#F04452", padding:"6px 0 2px", fontWeight:600 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#F04452", padding:"6px 0 2px", fontWeight:600 }}>
                   <span>🏦 부채</span><span>{fmtM(totalDebt)}</span>
                 </div>
               </div>
@@ -601,14 +601,14 @@ function MonthlyBarChart({ active, selIdx, setSelIdx, privacy }) {
 
   return (
     <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
-      <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>월별 수입 / 지출 흐름</div>
+      <div style={{ fontSize:12, color:"#333333", fontWeight:700, marginBottom:10 }}>월별 수입 / 지출 흐름</div>
       <ResponsiveContainer width="100%" height={230} className="chart-height-lg">
         <BarChart data={barData} barGap={3} barCategoryGap="28%"
           margin={{ top:8, right:8, left:8, bottom:0 }}
           onClick={d=>{ if(d?.activePayload){ setSelIdx(d.activePayload[0]?.payload?._idx ?? selIdx); } }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" vertical={false} />
-          <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
-          <YAxis tickFormatter={v=>fmtM(v)} tick={{ fill:"#AAAAAA", fontSize:8 }} axisLine={false} tickLine={false} width={50} tickCount={4} />
+          <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:12 }} axisLine={false} tickLine={false} />
+          <YAxis tickFormatter={v=>fmtM(v)} tick={{ fill:"#AAAAAA", fontSize:12 }} axisLine={false} tickLine={false} width={50} tickCount={4} />
 
           <RechartTooltip content={<TT />} />
           {!privacy && <Bar dataKey="수입" stackId="income" fill="#FF7E36" name="수입" shape={<CustomBar />} radius={[3,3,0,0]} />}
@@ -616,7 +616,7 @@ function MonthlyBarChart({ active, selIdx, setSelIdx, privacy }) {
           <Bar dataKey="변동지출" stackId="spend" fill="#8B5CF6" name="변동지출" shape={<CustomBar />} radius={[3,3,0,0]} />
         </BarChart>
       </ResponsiveContainer>
-      <div style={{ display:"flex", gap:10, justifyContent:"center", fontSize:10, color:"#666666", marginTop:8, flexWrap:"wrap" }}>
+      <div style={{ display:"flex", gap:10, justifyContent:"center", fontSize:12, color:"#666666", marginTop:8, flexWrap:"wrap" }}>
         {!privacy && <span><span style={{color:"#FF7E36"}}>■</span> 수입</span>}
         <span><span style={{color:"#F04452"}}>■</span> 고정지출</span>
         <span><span style={{color:"#8B5CF6"}}>■</span> 변동지출</span>
@@ -641,10 +641,10 @@ function YearTab({ monthly, active, raw, privacy }) {
 
   return (
     <div>
-      <div style={{ fontSize:11, color:"#333333", marginBottom:14 }}>1~{active.length}월 누적 기준</div>
+      <div style={{ fontSize:13, color:"#333333", marginBottom:14 }}>1~{active.length}월 누적 기준</div>
 
       <AccordionCard label="총 수입" value={privacy?"●●●":totalIncome.total} color="#FF7E36" isOpen={open==="income"&&!privacy} onToggle={()=>!privacy&&toggle("income")}
-        sub={<div style={{ fontSize:10, color:"#333333" }}>연간 합계</div>}>
+        sub={<div style={{ fontSize:12, color:"#333333" }}>연간 합계</div>}>
         <div style={{ background:"#E8E3DE", borderRadius:12, padding:"12px 14px" }}>
           {(() => {
             // 급여: C열(원중/혜지)로 그룹핑, 소분류 제거 / 기타: "중분류 소분류" 공백 형식
@@ -674,21 +674,21 @@ function YearTab({ monthly, active, raw, privacy }) {
                 return (
                   <div key={groupName} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                      <span style={{ fontSize:11, color:"#FF7E36", fontWeight:700 }}>{groupName}</span>
-                      <span style={{ fontSize:10, color:"#AAAAAA" }}>{items[0].label}</span>
+                      <span style={{ fontSize:13, color:"#FF7E36", fontWeight:700 }}>{groupName}</span>
+                      <span style={{ fontSize:12, color:"#AAAAAA" }}>{items[0].label}</span>
                     </div>
-                    <span style={{ fontSize:11, fontWeight:600, color:"#FF7E36" }}>{fmt(items[0].v)}</span>
+                    <span style={{ fontSize:13, fontWeight:600, color:"#FF7E36" }}>{fmt(items[0].v)}</span>
                   </div>
                 );
               }
               return (
                 <div key={groupName} style={{ marginBottom:8 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#FF7E36", fontWeight:700, paddingBottom:4, borderBottom:"1px solid #FF7E3633", marginBottom:4 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#FF7E36", fontWeight:700, paddingBottom:4, borderBottom:"1px solid #FF7E3633", marginBottom:4 }}>
                     <span>{groupName}</span>
                     <span>{fmt(groupTotal)}</span>
                   </div>
                   {items.map(({label, v}) => (
-                    <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
+                    <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#666666", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
                       <span>{label}</span>
                       <span style={{ fontWeight:500, color:"#555555" }}>{fmt(v)}</span>
                     </div>
@@ -701,12 +701,12 @@ function YearTab({ monthly, active, raw, privacy }) {
       </AccordionCard>
 
       <AccordionCard label="총 고정지출" value={totalFixed} color="#F04452" isOpen={open==="fixed"} onToggle={()=>toggle("fixed")}
-        sub={<div style={{ fontSize:10, color:"#333333" }}>수입 대비 {totalIncome.total>0?(totalFixed/totalIncome.total*100).toFixed(0):"-"}%</div>}>
+        sub={<div style={{ fontSize:12, color:"#333333" }}>수입 대비 {totalIncome.total>0?(totalFixed/totalIncome.total*100).toFixed(0):"-"}%</div>}>
         <DetailPanel groups={yearFixedGroups} raw={raw} monthIdx={null} color="#F04452" isFixed={true} />
       </AccordionCard>
 
       <AccordionCard label="총 변동지출" value={totalVariable} color="#8B5CF6" isOpen={open==="variable"} onToggle={()=>toggle("variable")}
-        sub={<div style={{ fontSize:10, color:"#333333" }}>수입 대비 {totalIncome.total>0?(totalVariable/totalIncome.total*100).toFixed(0):"-"}%</div>}>
+        sub={<div style={{ fontSize:12, color:"#333333" }}>수입 대비 {totalIncome.total>0?(totalVariable/totalIncome.total*100).toFixed(0):"-"}%</div>}>
         <DetailPanel groups={yearVarGroups} raw={raw} monthIdx={null} color="#8B5CF6" isFixed={false} />
       </AccordionCard>
 
@@ -746,16 +746,16 @@ function YearTab({ monthly, active, raw, privacy }) {
               {/* 월 평균 요약 3칸 */}
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:16 }}>
                 <div style={{ background:"#FF7E3610", borderRadius:10, padding:"10px 10px" }}>
-                  <div style={{ fontSize:9, color:"#FF7E36", fontWeight:700, marginBottom:4 }}>월평균 수입</div>
+                  <div style={{ fontSize:13, color:"#FF7E36", fontWeight:700, marginBottom:4 }}>월평균 수입</div>
                   <div style={{ fontSize:14, fontWeight:700, color:"#FF7E36" }}>{privacy?"●●●":fmtM(avgIncome)}</div>
                 </div>
                 <div style={{ background:"#F0445210", borderRadius:10, padding:"10px 10px" }}>
-                  <div style={{ fontSize:9, color:"#F04452", fontWeight:700, marginBottom:4 }}>월평균 지출</div>
+                  <div style={{ fontSize:13, color:"#F04452", fontWeight:700, marginBottom:4 }}>월평균 지출</div>
                   <div style={{ fontSize:14, fontWeight:700, color:"#F04452" }}>{fmtM(avgExpense)}</div>
-                  <div style={{ fontSize:8, color:"#F04452aa", marginTop:2 }}>고정 {fmtM(avgFixed)} / 변동 {fmtM(avgVar)}</div>
+                  <div style={{ fontSize:12, color:"#F04452aa", marginTop:2 }}>고정 {fmtM(avgFixed)} / 변동 {fmtM(avgVar)}</div>
                 </div>
                 <div style={{ background:avgNet>=0?"#00C47110":"#F0445210", borderRadius:10, padding:"10px 10px" }}>
-                  <div style={{ fontSize:9, color:avgNet>=0?"#00C471":"#F04452", fontWeight:700, marginBottom:4 }}>월평균 순수익</div>
+                  <div style={{ fontSize:13, color:avgNet>=0?"#00C471":"#F04452", fontWeight:700, marginBottom:4 }}>월평균 순수익</div>
                   <div style={{ fontSize:14, fontWeight:700, color:avgNet>=0?"#00C471":"#F04452" }}>{privacy?"●●●":fmtM(avgNet)}</div>
                 </div>
               </div>
@@ -778,7 +778,7 @@ function YearTab({ monthly, active, raw, privacy }) {
                           background: activeLine===l.key ? `${l.color}22` : "transparent",
                           border: `1px solid ${activeLine===l.key ? l.color : "#C8C3BE"}`,
                           borderRadius:8, color: activeLine===l.key ? l.color : "#777777",
-                          fontSize:11, padding:"4px 14px", cursor:"pointer",
+                          fontSize:13, padding:"4px 14px", cursor:"pointer",
                           fontFamily:"inherit", fontWeight: activeLine===l.key ? 700 : 400,
                         }}>{l.key}</button>
                       ))}
@@ -786,7 +786,7 @@ function YearTab({ monthly, active, raw, privacy }) {
                     <ResponsiveContainer width="100%" height={200}>
                       <LineChart data={lineData} margin={{ top:8, right:12, left:12, bottom:0 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" vertical={false} />
-                        <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
+                        <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:12 }} axisLine={false} tickLine={false} />
                         <YAxis hide tickFormatter={v=>fmtM(v)} />
                         <RechartTooltip content={<TT />} />
                         <Line
@@ -844,25 +844,25 @@ function DebtTab({ monthly, active, raw }) {
            <div style={{ background:"#EDE8E3", border:`1px solid ${debtChange!==null&&debtChange<0?"#6ac99755":debtChange!==null&&debtChange>0?"#c96a6a33":"transparent"}`, borderRadius:14, padding:"14px 12px" }}>
             {debtChange !== null && debtChange < 0 ? (
              <>
-              <div style={{ fontSize:11, color:"#6ac997aa", marginBottom:4 }}>🎉 이번 달 갚은 금액</div>
+              <div style={{ fontSize:13, color:"#6ac997aa", marginBottom:4 }}>🎉 이번 달 갚은 금액</div>
               <div style={{ fontSize:20, fontWeight:700, color:"#00C471" }}>{fmtM(Math.abs(debtChange))}</div>
-              <div style={{ fontSize:10, color:"#00C47166", marginTop:2 }}>잘 하고 있어요 💪</div>
+              <div style={{ fontSize:12, color:"#00C47166", marginTop:2 }}>잘 하고 있어요 💪</div>
              </>
             ) : debtChange !== null && debtChange > 0 ? (
              <>
-              <div style={{ fontSize:11, color:"#F04452aa", marginBottom:4 }}>⚠ 이번 달 부채 증가</div>
+              <div style={{ fontSize:13, color:"#F04452aa", marginBottom:4 }}>⚠ 이번 달 부채 증가</div>
               <div style={{ fontSize:20, fontWeight:700, color:"#F04452" }}>+{fmtM(debtChange)}</div>
              </>
             ) : (
-             <div style={{ fontSize:11, color:"#888888" }}>전월 데이터 없음</div>
+             <div style={{ fontSize:13, color:"#888888" }}>전월 데이터 없음</div>
             )}
            </div>
            <div style={{ background:"#EDE8E3", border:`1px solid ${debtChange!==null&&debtChange<=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 12px" }}>
-            <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:6 }}>현재 총 부채</div>
+            <div style={{ fontSize:13, color:"#888888", fontWeight:700, marginBottom:6 }}>현재 총 부채</div>
             <div style={{ fontSize:20, fontWeight:700, color:"#F04452", marginBottom:6 }}>{fmtM(totalDebt)}</div>
             {debtChange !== null && (
              <div>
-              <div style={{ fontSize:9, color:"#888888", marginBottom:3 }}>전월 대비</div>
+              <div style={{ fontSize:13, color:"#888888", marginBottom:3 }}>전월 대비</div>
               <div style={{ fontSize:13, fontWeight:700, color:debtChange<=0?"#00C471":"#F04452" }}>
                {debtChange<=0?"▼":"▲"} {fmtM(Math.abs(debtChange))}
               </div>
@@ -872,18 +872,18 @@ function DebtTab({ monthly, active, raw }) {
           </div>
 
           <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px", marginBottom:12 }}>
-           <div style={{ fontSize:10, color:"#F04452", fontWeight:700, marginBottom:12 }}>항목별 부채</div>
+           <div style={{ fontSize:12, color:"#F04452", fontWeight:700, marginBottom:12 }}>항목별 부채</div>
            {debtItems.map(({k,v,prev},i)=>{
             const pct    = totalDebt>0?(v/totalDebt*100).toFixed(0):0;
             const change = selIdx>0 ? v-prev : null;
             return (
              <div key={k} style={{ marginBottom:14 }}>
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", marginBottom:4 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#555555", marginBottom:4 }}>
                <span>{k}</span>
                <div style={{ textAlign:"right" }}>
                 <span style={{ fontWeight:700 }}>{fmt(v)}</span>
                 {change!==null && change!==0 && (
-                 <span style={{ fontSize:10, color:change<0?"#00C471":"#F04452", marginLeft:6 }}>
+                 <span style={{ fontSize:12, color:change<0?"#00C471":"#F04452", marginLeft:6 }}>
                   {change<0?"↓":"↑"}{fmtM(Math.abs(change))}
                  </span>
                 )}
@@ -892,7 +892,7 @@ function DebtTab({ monthly, active, raw }) {
               <div style={{ width:"100%", height:5, background:"#D8D3CE", borderRadius:3 }}>
                <div style={{ width:`${pct}%`, height:"100%", background:DC[i%DC.length], borderRadius:3 }}/>
               </div>
-              <div style={{ fontSize:9, color:"#888888", marginTop:2 }}>{pct}%</div>
+              <div style={{ fontSize:13, color:"#888888", marginTop:2 }}>{pct}%</div>
              </div>
             );
            })}
@@ -901,12 +901,12 @@ function DebtTab({ monthly, active, raw }) {
 
         <div className="desktop-right">
           <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
-            <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>부채 추이</div>
+            <div style={{ fontSize:12, color:"#333333", fontWeight:700, marginBottom:10 }}>부채 추이</div>
             <ResponsiveContainer width="100%" height={180}>
               <LineChart data={active.map(a=>({ name:a.month, 부채:a.totalDebt }))} onClick={d=>{ if(d?.activeLabel){ const i=MONTHS.indexOf(d.activeLabel); if(i>=0) setSelIdx(i); } }} margin={{ top:24, right:16, left:8, bottom:0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
-                <YAxis tickFormatter={v=>fmtM(v)} tick={{ fill:"#AAAAAA", fontSize:8 }} axisLine={false} tickLine={false} width={52} domain={['auto','auto']} tickCount={4} />
+                <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:12 }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={v=>fmtM(v)} tick={{ fill:"#AAAAAA", fontSize:12 }} axisLine={false} tickLine={false} width={52} domain={['auto','auto']} tickCount={4} />
                 <RechartTooltip content={<TT />} />
                 <Line type="monotone" dataKey="부채" name="부채" stroke="#F04452" strokeWidth={2}
                   dot={(props) => {
@@ -927,10 +927,10 @@ function DebtTab({ monthly, active, raw }) {
             </ResponsiveContainer>
 
             <div style={{ marginTop:12, borderTop:"1px solid #D8D3CE", paddingTop:10 }}>
-              <div style={{ fontSize:9, color:"#888888", fontWeight:700, marginBottom:8 }}>월별 증감 (↓ 감소 = 상환)</div>
+              <div style={{ fontSize:13, color:"#888888", fontWeight:700, marginBottom:8 }}>월별 증감 (↓ 감소 = 상환)</div>
               <ResponsiveContainer width="100%" height={80}>
                 <BarChart data={changeData} margin={{ top:4, right:4, left:4, bottom:0 }}>
-                  <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:9 }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:13 }} axisLine={false} tickLine={false} />
                   <YAxis hide />
                   <RechartTooltip formatter={(v) => [fmtM(Math.abs(v)), v<0?"상환":"증가"]} />
                   <Bar dataKey="증감" name="증감" radius={[3,3,0,0]}>
@@ -1003,11 +1003,11 @@ function InvestTab({ monthly, active, raw }) {
         <div className="desktop-left">
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
             <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
-              <div style={{ fontSize:11, color:"#00C471", fontWeight:700, marginBottom:6 }}>투자자산</div>
+              <div style={{ fontSize:13, color:"#00C471", fontWeight:700, marginBottom:6 }}>투자자산</div>
               <div style={{ fontSize:20, fontWeight:700, color:"#00C471" }}>{fmtM(totalAsset)}</div>
             </div>
             <div style={{ background:"#EDE8E3", border:`1px solid ${investGain===null||investGain>=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 12px" }}>
-              <div style={{ fontSize:11, color:"#333333", fontWeight:700, marginBottom:6 }}>전월 대비</div>
+              <div style={{ fontSize:13, color:"#333333", fontWeight:700, marginBottom:6 }}>전월 대비</div>
               <div style={{ fontSize:20, fontWeight:700, color:investGain===null?"#999999":investGain>=0?"#00C471":"#F04452" }}>
                 {investGain===null ? "-" : (investGain>=0?"+":"")+fmtM(investGain)}
               </div>
@@ -1016,18 +1016,18 @@ function InvestTab({ monthly, active, raw }) {
 
           {investItems.length > 0 ? (
             <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px", marginBottom:12 }}>
-              <div style={{ fontSize:10, color:"#00C471", fontWeight:700, marginBottom:12 }}>항목별</div>
+              <div style={{ fontSize:12, color:"#00C471", fontWeight:700, marginBottom:12 }}>항목별</div>
               {investItems.map(({k,v},i)=>{
                 const pct=totalAsset>0?(v/totalAsset*100).toFixed(0):0;
                 return (
                   <div key={k} style={{ marginBottom:12 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:"#555555", marginBottom:4 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#555555", marginBottom:4 }}>
                       <span>{k}</span><span style={{ fontWeight:700, color:"#00C471" }}>{fmt(v)}</span>
                     </div>
                     <div style={{ width:"100%", height:5, background:"#D8D3CE", borderRadius:3 }}>
                       <div style={{ width:`${pct}%`, height:"100%", background:AC[i%AC.length], borderRadius:3 }}/>
                     </div>
-                    <div style={{ fontSize:9, color:"#888888", marginTop:2 }}>{pct}%</div>
+                    <div style={{ fontSize:13, color:"#888888", marginTop:2 }}>{pct}%</div>
                   </div>
                 );
               })}
@@ -1041,13 +1041,13 @@ function InvestTab({ monthly, active, raw }) {
 
         <div className="desktop-right">
           <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
-            <div style={{ fontSize:10, color:"#333333", fontWeight:700, marginBottom:10 }}>투자자산 추이</div>
+            <div style={{ fontSize:12, color:"#333333", fontWeight:700, marginBottom:10 }}>투자자산 추이</div>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={investData} margin={{ top:30, right:16, left:16, bottom:0 }}
                 onClick={d=>{ if(d?.activeLabel){ const i=MONTHS.indexOf(d.activeLabel); if(i>=0) setSelIdx(i); } }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#D8D3CE" />
-                <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:10 }} axisLine={false} tickLine={false} />
-                <YAxis hide={false} tickFormatter={v=>fmtM(v)} tick={{ fill:"#AAAAAA", fontSize:8 }} axisLine={false} tickLine={false} width={50} />
+                <XAxis dataKey="name" tick={{ fill:"#999999", fontSize:12 }} axisLine={false} tickLine={false} />
+                <YAxis hide={false} tickFormatter={v=>fmtM(v)} tick={{ fill:"#AAAAAA", fontSize:12 }} axisLine={false} tickLine={false} width={50} />
                 <RechartTooltip content={<TT />} />
                 <Line type="monotone" dataKey="투자자산" name="투자자산"
                   stroke="#00C471" strokeWidth={2}
@@ -1104,13 +1104,13 @@ function AlertTab({ monthly, active, raw, privacy }) {
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
         <div style={{ flex:1 }}>
           <div style={{ fontSize:12, color:"#1A1A1A", fontWeight:500 }}>{label}</div>
-          <div style={{ fontSize:10, color:"#888888", marginTop:2 }}>
+          <div style={{ fontSize:12, color:"#888888", marginTop:2 }}>
             {prev > 0 ? `${fmtM(prev)} → ${fmtM(cur)}` : `신규 ${fmtM(cur)}`}
           </div>
         </div>
         <div style={{ textAlign:"right", minWidth:70 }}>
           <div style={{ fontSize:16, fontWeight:700, color }}>{fmtM(Math.abs(diff))}</div>
-          {pct && <div style={{ fontSize:9, color, marginTop:2 }}>{pct}%</div>}
+          {pct && <div style={{ fontSize:13, color, marginTop:2 }}>{pct}%</div>}
         </div>
       </div>
     );
@@ -1122,13 +1122,13 @@ function AlertTab({ monthly, active, raw, privacy }) {
 
       {totalDiff === null ? (
        <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
-        <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:8 }}>총 지출 전월 대비</div>
+        <div style={{ fontSize:13, color:"#888888", fontWeight:700, marginBottom:8 }}>총 지출 전월 대비</div>
         <div style={{ fontSize:22, fontWeight:700, color:"#1A1A1A" }}>{fmtM(totalCur)}</div>
        </div>
       ) : (
        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
         <div style={{ background:"#EDE8E3", border:`1px solid ${totalDiff<=0?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 12px" }}>
-         <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:6 }}>전월 대비</div>
+         <div style={{ fontSize:13, color:"#888888", fontWeight:700, marginBottom:6 }}>전월 대비</div>
          <div style={{ fontSize:20, fontWeight:700, color:totalDiff>0?"#F04452":"#00C471", marginBottom:4 }}>
           {fmtM(Math.abs(totalDiff))}
          </div>
@@ -1137,9 +1137,9 @@ function AlertTab({ monthly, active, raw, privacy }) {
          </div>
         </div>
         <div style={{ background:"#EDE8E3", borderRadius:14, padding:"14px 12px" }}>
-         <div style={{ fontSize:11, color:"#888888", fontWeight:700, marginBottom:6 }}>이번 달 총 지출</div>
+         <div style={{ fontSize:13, color:"#888888", fontWeight:700, marginBottom:6 }}>이번 달 총 지출</div>
          <div style={{ fontSize:20, fontWeight:700, color:"#1A1A1A", marginBottom:4 }}>{fmtM(totalCur)}</div>
-         <div style={{ fontSize:10, color:"#AAAAAA" }}>전월 {fmtM(totalPrev)}</div>
+         <div style={{ fontSize:12, color:"#AAAAAA" }}>전월 {fmtM(totalPrev)}</div>
         </div>
        </div>
       )}
@@ -1152,19 +1152,19 @@ function AlertTab({ monthly, active, raw, privacy }) {
         <>
           {increased.length > 0 && (
             <div style={{ background:"#EDE8E3", border:"1px solid #F0445222", borderRadius:14, padding:"14px", marginBottom:10 }}>
-              <div style={{ fontSize:10, color:"#F04452", fontWeight:700, marginBottom:4 }}>📈 늘어난 지출 ({increased.length}개)</div>
+              <div style={{ fontSize:12, color:"#F04452", fontWeight:700, marginBottom:4 }}>📈 늘어난 지출 ({increased.length}개)</div>
               {increased.map(x => <Row key={x.k} label={x.label} cur={x.cur} prev={x.prev} diff={x.diff} color={C.up} />)}
             </div>
           )}
           {newItems.length > 0 && (
             <div style={{ background:"#EDE8E3", border:"1px solid #8B5CF633", borderRadius:14, padding:"14px", marginBottom:10 }}>
-              <div style={{ fontSize:10, color:"#8B5CF6", fontWeight:700, marginBottom:4 }}>🆕 이번 달 새로 생긴 지출 ({newItems.length}개)</div>
+              <div style={{ fontSize:12, color:"#8B5CF6", fontWeight:700, marginBottom:4 }}>🆕 이번 달 새로 생긴 지출 ({newItems.length}개)</div>
               {newItems.map(x => <Row key={x.k} label={x.label} cur={x.cur} prev={0} diff={x.diff} color={C.new} />)}
             </div>
           )}
           {decreased.length > 0 && (
             <div style={{ background:"#EDE8E3", border:"1px solid #00C47122", borderRadius:14, padding:"14px", marginBottom:10 }}>
-              <div style={{ fontSize:10, color:"#00C471", fontWeight:700, marginBottom:4 }}>📉 줄어든 지출 ({decreased.length}개)</div>
+              <div style={{ fontSize:12, color:"#00C471", fontWeight:700, marginBottom:4 }}>📉 줄어든 지출 ({decreased.length}개)</div>
               {decreased.map(x => <Row key={x.k} label={x.label} cur={x.cur} prev={x.prev} diff={x.diff} color={C.down} />)}
             </div>
           )}
@@ -1291,7 +1291,7 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
         </div>
         {ASSET_PRESETS.map(p=>(
           <div key={p.id} style={{ marginBottom:14 }}>
-            <div style={{ fontSize:11, color:"#333333", marginBottom:6 }}>{p.icon} {p.name} (만원)</div>
+            <div style={{ fontSize:13, color:"#333333", marginBottom:6 }}>{p.icon} {p.name} (만원)</div>
             <input
               type="number" value={vals[p.id]||""} placeholder={p.placeholder}
               onChange={e=>setVals(v=>({...v,[p.id]:e.target.value}))}
@@ -1302,7 +1302,7 @@ function PhysicalAssetModal({ assets, onChange, onClose }) {
         {custom.map((c,i)=>(
           <div key={c.id} style={{ marginBottom:14, display:"flex", gap:8, alignItems:"center" }}>
             <div style={{ flex:1 }}>
-              <div style={{ fontSize:11, color:"#333333", marginBottom:6 }}>{c.name} (만원)</div>
+              <div style={{ fontSize:13, color:"#333333", marginBottom:6 }}>{c.name} (만원)</div>
               <input type="number" value={c.value/10000||""} onChange={e=>setCustom(cs=>cs.map((x,j)=>j===i?{...x,value:Number(e.target.value)*10000}:x))}
                 style={{ width:"100%", background:"#F5F0EB", border:"1px solid #2a2a4a", borderRadius:8, padding:"8px 12px", color:"#1A1A1A", fontSize:13, fontFamily:"inherit", outline:"none" }} />
             </div>
@@ -1402,21 +1402,21 @@ function ChangelogPanel() {
 
   return (
     <div style={{ margin:"24px 0 8px", borderTop:"1px solid #E8E0D8", paddingTop:14 }}>
-      <div style={{ fontSize:9, color:"#BBBBBB", fontWeight:700, letterSpacing:.8, marginBottom:8 }}>업데이트 기록</div>
+      <div style={{ fontSize:13, color:"#BBBBBB", fontWeight:700, letterSpacing:.8, marginBottom:8 }}>업데이트 기록</div>
       <div style={{ background:"#EDE8E3", borderRadius:10, padding:"8px 12px", marginBottom:6 }}>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-          <span style={{ fontSize:10, fontWeight:700, color:"#FF7E36" }}>v{latest.version}</span>
-          <span style={{ fontSize:9, color:"#AAAAAA" }}>{latest.date}</span>
+          <span style={{ fontSize:12, fontWeight:700, color:"#FF7E36" }}>v{latest.version}</span>
+          <span style={{ fontSize:13, color:"#AAAAAA" }}>{latest.date}</span>
         </div>
         {latest.items.map((item,i)=>(
-          <div key={i} style={{ fontSize:10, color:"#666666", padding:"2px 0" }}>· {item}</div>
+          <div key={i} style={{ fontSize:12, color:"#666666", padding:"2px 0" }}>· {item}</div>
         ))}
       </div>
       {older.length > 0 && (
         <>
           <button onClick={()=>setExpanded(p=>!p)} style={{
             background:"transparent", border:"none",
-            color:"#BBBBBB", fontSize:10, padding:"4px 0", cursor:"pointer",
+            color:"#BBBBBB", fontSize:12, padding:"4px 0", cursor:"pointer",
             fontFamily:"inherit", width:"100%", textAlign:"left",
           }}>
             {expanded ? "▲ 접기" : `▼ 이전 업데이트 (${older.length}개)`}
@@ -1424,11 +1424,11 @@ function ChangelogPanel() {
           {expanded && older.map(log=>(
             <div key={log.version} style={{ background:"#E8E3DE", borderRadius:10, padding:"8px 12px", marginTop:4 }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:5 }}>
-                <span style={{ fontSize:10, fontWeight:700, color:"#999999" }}>v{log.version}</span>
-                <span style={{ fontSize:9, color:"#AAAAAA" }}>{log.date}</span>
+                <span style={{ fontSize:12, fontWeight:700, color:"#999999" }}>v{log.version}</span>
+                <span style={{ fontSize:13, color:"#AAAAAA" }}>{log.date}</span>
               </div>
               {log.items.map((item,i)=>(
-                <div key={i} style={{ fontSize:10, color:"#888888", padding:"2px 0" }}>· {item}</div>
+                <div key={i} style={{ fontSize:12, color:"#888888", padding:"2px 0" }}>· {item}</div>
               ))}
             </div>
           ))}
@@ -1533,18 +1533,18 @@ export default function App() {
                 background: privacy?"#FF7E3622":"transparent",
                 border:`1px solid ${privacy?"#FF7E36":"#2a2a4a"}`,
                 borderRadius:8, color:privacy?"#FF7E36":"#888888",
-                fontSize:11, padding:"4px 10px", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap"
+                fontSize:13, padding:"4px 10px", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap"
               }}>
                 {privacy?"🔓 공개":"🔒 가리기"}
               </button>
               <a href={`https://docs.google.com/spreadsheets/d/${SHEET_ID}`} target="_blank" rel="noopener noreferrer"
-                style={{ background:"transparent", border:"1px solid #2a2a4a", borderRadius:8, color:"#00C471", fontSize:11, padding:"4px 10px", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", textDecoration:"none" }}>
+                style={{ background:"transparent", border:"1px solid #2a2a4a", borderRadius:8, color:"#00C471", fontSize:13, padding:"4px 10px", cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", textDecoration:"none" }}>
                 🏠 시트에서 수정
               </a>
               <button onClick={fetchData} title="새로고침" style={{
                 background:"transparent", border:"1px solid #2a2a4a",
                 borderRadius:8, color: status==="loading"?"#FF7E36":"#555555",
-                fontSize:11, padding:"4px 10px", cursor:"pointer", fontFamily:"inherit",
+                fontSize:13, padding:"4px 10px", cursor:"pointer", fontFamily:"inherit",
                 display:"flex", alignItems:"center", gap:4,
               }}>
                 <span style={{ display:"inline-block", animation: status==="loading"?"spin 1s linear infinite":"none" }}>↻</span>
@@ -1552,7 +1552,7 @@ export default function App() {
               </button>
             </div>
           </div>
-          <div style={{ fontSize:10, color: status==="error"?"#F0445288":"#AAAAAA", marginBottom:10 }}>
+          <div style={{ fontSize:12, color: status==="error"?"#F0445288":"#AAAAAA", marginBottom:10 }}>
             {status==="error" ? "시트 연결 실패 · 이전 데이터 표시 중" : status==="loading" ? "구글 시트 불러오는 중…" : timeStr}
           </div>
           <div className="tab-bar">
@@ -1561,7 +1561,7 @@ export default function App() {
                 background:"transparent", border:"none",
                 borderBottom:`2px solid ${tab===t.id?"#FF7E36":"transparent"}`,
                 color:tab===t.id?"#FF7E36":"#555555",
-                fontSize:13, fontWeight:tab===t.id?700:400,
+                fontSize:14, fontWeight:tab===t.id?700:400,
                 padding:"8px 14px", cursor:"pointer", fontFamily:"inherit",
                 marginBottom:-1, transition:"all .15s", whiteSpace:"nowrap", flexShrink:0,
               }}>{t.label}</button>
@@ -1582,7 +1582,7 @@ export default function App() {
             <div style={{ textAlign:"center", paddingTop:60, color:"#F04452" }}>
               <div style={{ fontSize:28, marginBottom:12 }}>⚠️</div>
               <div style={{ fontSize:13, marginBottom:16 }}>구글 시트 연결에 실패했어요.</div>
-              <div style={{ fontSize:11, color:"#333333", marginBottom:20 }}>시트가 "링크 있는 모든 사용자 - 뷰어"로 공개되어 있는지 확인해 주세요.</div>
+              <div style={{ fontSize:13, color:"#333333", marginBottom:20 }}>시트가 "링크 있는 모든 사용자 - 뷰어"로 공개되어 있는지 확인해 주세요.</div>
               <button onClick={fetchData} style={{ background:"#F0445222", border:"1px solid #c96a6a", borderRadius:8, color:"#F04452", padding:"8px 20px", cursor:"pointer", fontFamily:"inherit", fontSize:13 }}>다시 시도</button>
             </div>
           )}
