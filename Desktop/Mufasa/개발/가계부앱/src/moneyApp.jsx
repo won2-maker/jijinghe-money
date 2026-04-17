@@ -441,7 +441,7 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                       </div>
                     </div>
                   )}
-                  <div style={{ fontSize:13, color:"#888888", marginTop:4 }}>{privacy?"":open==="income"?"▲":"▼ 세부"}</div>
+                  <div style={{ fontSize:10, color:"#888888", marginTop:4 }}>{privacy?"":open==="income"?"▲":"▼ 세부"}</div>
                 </div>
                 <div onClick={()=>toggle("fixed")} style={{ background:open==="fixed"?"#c96a6a18":"#EDE8E3", border:`1px solid ${open==="fixed"?"#F04452":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
                   <div style={{ fontSize:13, color:"#F04452", fontWeight:700, marginBottom:4 }}>고정지출</div>
@@ -456,12 +456,12 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                       <div style={{ fontSize:12, fontWeight:700, color:"#F04452" }}>{fmtM((m.fixed||0)-(m.fixedGroups["집세"]||0))}</div>
                     </div>
                   </div>
-                  <div style={{ fontSize:13, color:"#888888", marginTop:4 }}>{open==="fixed"?"▲":"▼"} 세부</div>
+                  <div style={{ fontSize:10, color:"#888888", marginTop:4 }}>{open==="fixed"?"▲":"▼"} 세부</div>
                 </div>
-                <div onClick={()=>toggle("variable")} style={{ background:open==="variable"?"#9b77c918":"#EDE8E3", border:`1px solid ${open==="variable"?"#8B5CF6":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer" }}>
+                <div onClick={()=>toggle("variable")} style={{ background:open==="variable"?"#9b77c918":"#EDE8E3", border:`1px solid ${open==="variable"?"#8B5CF6":"transparent"}`, borderRadius:12, padding:"12px 10px", cursor:"pointer", display:"flex", flexDirection:"column", justifyContent:"center" }}>
                   <div style={{ fontSize:13, color:"#8B5CF6", fontWeight:700, marginBottom:6 }}>변동지출</div>
                   <div style={{ fontSize:15, fontWeight:700, color:"#8B5CF6" }}>{fmtM(m.variable)}</div>
-                  <div style={{ fontSize:13, color:"#888888", marginTop:4 }}>{open==="variable"?"▲":"▼"} 세부</div>
+                  <div style={{ fontSize:10, color:"#888888", marginTop:4 }}>{open==="variable"?"▲":"▼"} 세부</div>
                 </div>
               </div>
             );
@@ -554,7 +554,7 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                       </div>
                     </div>
                   )}
-                  <div style={{ fontSize:13, color:"#888888", marginTop:4 }}>{open==="networth"?"▲ 닫기":"▼ 세부내역"}</div>
+                  <div style={{ fontSize:10, color:"#888888", marginTop:4 }}>{open==="networth"?"▲ 닫기":"▼ 세부내역"}</div>
                 </div>
               </div>
             </div>
