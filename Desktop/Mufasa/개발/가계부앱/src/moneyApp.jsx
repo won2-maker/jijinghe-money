@@ -1504,7 +1504,7 @@ export default function App() {
         * { scrollbar-width: none; -ms-overflow-style: none; }
         .app-inner { max-width:1200px; margin:0 auto; }
         .header-row { display:flex; align-items:center; gap:12px; }
-        .tab-bar { display:flex; overflow-x:auto; }
+        .tab-bar { display:flex; overflow-x:auto; background:#E0D9D2; borderRadius:14px; padding:4px; gap:2px; }
         .content-pad { padding:0 16px; }
         @media(min-width:768px){
           .app-inner { padding:0 32px; }
@@ -1524,7 +1524,7 @@ export default function App() {
         }
       `}</style>
 
-      <div style={{ borderBottom:"1px solid #E8E0D8", marginBottom:20, padding:"20px 16px 0" }}>
+      <div style={{ marginBottom:0, padding:"20px 16px 12px" }}>
         <div className="app-inner">
           <div className="header-row" style={{ marginBottom:4 }}>
             <div className="header-logo" style={{ fontSize:18, fontWeight:800, letterSpacing:-.5, color:"#FF7E36" }}>💰 지중헤 Money</div>
@@ -1555,22 +1555,27 @@ export default function App() {
           <div style={{ fontSize:12, color: status==="error"?"#F0445288":"#AAAAAA", marginBottom:10 }}>
             {status==="error" ? "시트 연결 실패 · 이전 데이터 표시 중" : status==="loading" ? "구글 시트 불러오는 중…" : timeStr}
           </div>
-          <div className="tab-bar">
-            {tabs.map(t=>(
-              <button key={t.id} onClick={()=>setTab(t.id)} className="tab-btn" style={{
-                background:"transparent", border:"none",
-                borderBottom:`2px solid ${tab===t.id?"#FF7E36":"transparent"}`,
-                color:tab===t.id?"#FF7E36":"#555555",
-                fontSize:14, fontWeight:tab===t.id?700:400,
-                padding:"8px 14px", cursor:"pointer", fontFamily:"inherit",
-                marginBottom:-1, transition:"all .15s", whiteSpace:"nowrap", flexShrink:0,
-              }}>{t.label}</button>
-            ))}
+          <div style={{
+           display:"flex", overflowX:"auto", background:"#E0D9D2",
+           borderRadius:14, padding:4, gap:2,
+          }}>
+           {tabs.map(t=>(
+            <button key={t.id} onClick={()=>setTab(t.id)} style={{
+             flex:1, flexShrink:0,
+             background:tab===t.id?"#FFFFFF":"transparent",
+             border:"none", borderRadius:10,
+             color:tab===t.id?"#FF7E36":"#777777",
+             fontSize:14, fontWeight:tab===t.id?700:500,
+             padding:"9px 14px", cursor:"pointer", fontFamily:"inherit",
+             whiteSpace:"nowrap", transition:"all .15s",
+             boxShadow:tab===t.id?"0 1px 5px rgba(0,0,0,0.13)":"none",
+            }}>{t.label}</button>
+           ))}
           </div>
         </div>
       </div>
 
-      <div className="content-pad" style={{ padding:"0 16px" }}>
+      <div className="content-pad" style={{ padding:"16px 16px 0" }}>
         <div className="app-inner">
           {status==="loading" && (
             <div style={{ textAlign:"center", paddingTop:60, color:"#444444" }}>
