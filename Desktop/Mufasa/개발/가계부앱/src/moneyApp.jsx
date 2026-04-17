@@ -1495,9 +1495,9 @@ export default function App() {
     : "";
 
   return (
-    <div style={{ minHeight:"100vh", background:"#F5F0EB", color:"#1A1A1A", fontFamily:"'Noto Sans KR', sans-serif", paddingBottom:40 }}>
+    <div style={{ minHeight:"100vh", background:"#F5F0EB", color:"#1A1A1A", fontFamily:"Pretendard, -apple-system, BlinkMacSystemFont, sans-serif", paddingBottom:40 }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard-dynamic-subset.css');
         *{box-sizing:border-box;margin:0;padding:0;}
         @keyframes spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
         ::-webkit-scrollbar { display: none; }
