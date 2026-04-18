@@ -373,7 +373,7 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
   );
 }
 
-function NetCard({ label, net, income, expense, privacy }) {
+function NetCard({ label, net, income, expense, privacy, incomeLabel="수입", expenseLabel="지출" }) {
   const pos=net>=0;
   return (
     <div style={{ background:"#1E1E1E", border:`1px solid ${pos?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -382,8 +382,8 @@ function NetCard({ label, net, income, expense, privacy }) {
         <div style={{ fontSize:22, fontWeight:700, color:pos?"#00C471":"#F04452" }}>{privacy?"●●●":(pos?"+":"")+fmt(net)}</div>
       </div>
       <div style={{ textAlign:"right", fontSize:13, color:"#888888" }}>
-        <div style={{ color:"#FF7E3688" }}>수입 {privacy?"●●●":fmtM(income)}</div>
-        <div style={{ marginTop:2 }}>지출 {privacy?"●●●":fmtM(expense)}</div>
+        <div style={{ color:"#FF7E3688" }}>{incomeLabel} {privacy?"●●●":fmtM(income)}</div>
+        <div style={{ marginTop:2 }}>{expenseLabel} {privacy?"●●●":fmtM(expense)}</div>
       </div>
     </div>
   );
@@ -530,7 +530,19 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
             </div>
           )}
 
-          <NetCard label={`${m.month} 순이익`} net={m.순익} income={m.income.total} expense={m.fixed+m.variable} privacy={privacy} />
+          {(() => {
+            const debtRepaid = prevDebt !== null ? prevDebt - totalDebt : m.순익;
+            const useDebt = prevDebt !== null;
+            return <NetCard
+              label={`${m.month} 순이익`}
+              net={useDebt ? debtRepaid : m.순익}
+              income={useDebt ? prevDebt : m.income.total}
+              expense={useDebt ? totalDebt : m.fixed+m.variable}
+              incomeLabel={useDebt ? "전월 부채" : "수입"}
+              expenseLabel={useDebt ? "현재 부채" : "지출"}
+              privacy={privacy}
+            />;
+          })()}
 
           <div style={{ marginBottom:16 }}>
             <div onClick={()=>toggle("networth")} style={{
