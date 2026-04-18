@@ -373,7 +373,7 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
   );
 }
 
-function NetCard({ label, net, income, expense, privacy, incomeLabel="수입", expenseLabel="지출" }) {
+function NetCard({ label, net, income, expense, privacy, incomeLabel="수입", expenseLabel="지출", diffSign=false }) {
   const pos=net>=0;
   return (
     <div style={{ background:"#1E1E1E", border:`1px solid ${pos?"#00C47133":"#F0445233"}`, borderRadius:14, padding:"14px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -383,7 +383,7 @@ function NetCard({ label, net, income, expense, privacy, incomeLabel="수입", e
       </div>
       <div style={{ textAlign:"right", fontSize:13, color:"#888888" }}>
         <div style={{ color:"#FF7E3688" }}>{incomeLabel} {privacy?"●●●":fmtM(income)}</div>
-        <div style={{ marginTop:2 }}>{expenseLabel} {privacy?"●●●":fmtM(expense)}</div>
+        <div style={{ marginTop:2, color:diffSign?(expense>=0?"#00C471":"#F04452"):"#888888" }}>{expenseLabel} {privacy?"●●●":(diffSign?(expense>=0?"+":"-")+fmtM(Math.abs(expense)):fmtM(expense))}</div>
       </div>
     </div>
   );
@@ -531,18 +531,28 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
           )}
 
           {(() => {
-            const debtRepaid = prevDebt !== null ? prevDebt - totalDebt : m.순익;
-            const useDebt = prevDebt !== null;
+            // 이번달 순이익 = 부채상환 + 투자수익
+            const thisMonthNet = prevDebt !== null
+              ? (prevDebt - totalDebt) + (totalFinancial - (prevFinancial ?? 0))
+              : m.순익;
+            // 전월 순이익 (2개월 전 데이터 필요)
+            const prevPrevDebt      = selIdx >= 2 ? (totalDebtByMonth[selIdx-2] || 0) : null;
+            const prevPrevFinancial = selIdx >= 2 ? (monthly[selIdx-2]?.totalAsset || 0) : null;
+            const prevMonthNet = prevPrevDebt !== null && prevDebt !== null
+              ? (prevPrevDebt - prevDebt) + ((prevFinancial ?? 0) - prevPrevFinancial)
+              : null;
+            const diff = prevMonthNet !== null ? thisMonthNet - prevMonthNet : null;
             return <NetCard
               label={`${m.month} 순이익`}
-              net={useDebt ? debtRepaid : m.순익}
-              income={useDebt ? prevDebt : m.income.total}
-              expense={useDebt ? totalDebt : m.fixed+m.variable}
-              incomeLabel={useDebt ? "전월 부채" : "수입"}
-              expenseLabel={useDebt ? "현재 부채" : "지출"}
+              net={thisMonthNet}
+              income={prevMonthNet ?? m.income.total}
+              expense={diff ?? m.fixed+m.variable}
+              incomeLabel={prevMonthNet !== null ? "전월 순이익" : "수입"}
+              expenseLabel={diff !== null ? "전월 대비" : "지출"}
+              diffSign={diff !== null}
               privacy={privacy}
             />;
-          })()}
+          })()} 
 
           <div style={{ marginBottom:16 }}>
             <div onClick={()=>toggle("networth")} style={{
