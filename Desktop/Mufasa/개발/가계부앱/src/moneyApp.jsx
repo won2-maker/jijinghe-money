@@ -402,11 +402,11 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
 
   const totalPhysical  = totalPhysicalByMonth[selIdx] || 0;
   const totalDebt      = totalDebtByMonth[selIdx] || 0;
-  const totalFinancial = monthly[selIdx]?.totalAsset || 0;
+  const totalFinancial = monthly[selIdx]?.totalInvest || 0;
   const netWorth       = totalPhysical + totalFinancial - totalDebt;
   const prevSelIdx     = selIdx - 1;
   const prevDebt       = prevSelIdx >= 0 ? (totalDebtByMonth[prevSelIdx] || 0) : null;
-  const prevFinancial  = prevSelIdx >= 0 ? (monthly[prevSelIdx]?.totalAsset || 0) : null;
+  const prevFinancial  = prevSelIdx >= 0 ? (monthly[prevSelIdx]?.totalInvest || 0) : null;
   const prevPhysical   = prevSelIdx >= 0 ? (totalPhysicalByMonth[prevSelIdx] || 0) : null;
   const prevNetWorth   = prevDebt !== null ? (prevPhysical + prevFinancial - prevDebt) : null;
   const netWorthChange = prevNetWorth !== null ? netWorth - prevNetWorth : null;
@@ -531,12 +531,15 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
           )}
 
           {(() => {
-            // 순이익 = 부채 상환액 (전월부채 - 현재부채)
-            const thisMonthNet = prevDebt !== null ? prevDebt - totalDebt : m.순익;
-            // 전월 순이익 (2개월 전 데이터 필요)
-            const prevPrevDebt = selIdx >= 2 ? (totalDebtByMonth[selIdx-2] || 0) : null;
+            // 순이익 = 부채상환 + 투자자산 변동
+            const thisMonthNet = prevDebt !== null
+              ? (prevDebt - totalDebt) + (totalFinancial - (prevFinancial ?? 0))
+              : m.순익;
+            // 전월 순이익
+            const prevPrevDebt    = selIdx >= 2 ? (totalDebtByMonth[selIdx-2] || 0) : null;
+            const prevPrevInvest  = selIdx >= 2 ? (monthly[selIdx-2]?.totalInvest || 0) : null;
             const prevMonthNet = prevPrevDebt !== null && prevDebt !== null
-              ? prevPrevDebt - prevDebt
+              ? (prevPrevDebt - prevDebt) + ((prevFinancial ?? 0) - (prevPrevInvest ?? 0))
               : null;
             const diff = prevMonthNet !== null ? thisMonthNet - prevMonthNet : null;
             return <NetCard
