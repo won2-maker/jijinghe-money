@@ -531,15 +531,12 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
           )}
 
           {(() => {
-            // 이번달 순이익 = 부채상환 + 투자수익
-            const thisMonthNet = prevDebt !== null
-              ? (prevDebt - totalDebt) + (totalFinancial - (prevFinancial ?? 0))
-              : m.순익;
+            // 순이익 = 부채 상환액 (전월부채 - 현재부채)
+            const thisMonthNet = prevDebt !== null ? prevDebt - totalDebt : m.순익;
             // 전월 순이익 (2개월 전 데이터 필요)
-            const prevPrevDebt      = selIdx >= 2 ? (totalDebtByMonth[selIdx-2] || 0) : null;
-            const prevPrevFinancial = selIdx >= 2 ? (monthly[selIdx-2]?.totalAsset || 0) : null;
+            const prevPrevDebt = selIdx >= 2 ? (totalDebtByMonth[selIdx-2] || 0) : null;
             const prevMonthNet = prevPrevDebt !== null && prevDebt !== null
-              ? (prevPrevDebt - prevDebt) + ((prevFinancial ?? 0) - prevPrevFinancial)
+              ? prevPrevDebt - prevDebt
               : null;
             const diff = prevMonthNet !== null ? thisMonthNet - prevMonthNet : null;
             return <NetCard
