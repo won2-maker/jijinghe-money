@@ -329,7 +329,7 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
         return (
           <div key={group} style={{ marginBottom:10 }}>
             {normalItems.length === 1 && mergedItems.length === 0 ? (
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"4px 0", borderBottom:"1px solid #2E2E2E" }}>
                 <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                   <span style={{ fontSize:13, color, fontWeight:700 }}>{group}</span>
                   {getSubLabel(normalItems[0].uKey) && (
@@ -347,7 +347,7 @@ function DetailPanel({ groups, raw, monthIdx, color, privacy, isFixed }) {
                 {normalItems.map(({uKey, label, v}) => {
                   const suffix = label.includes("(통신비 포함)") ? " (통신비 포함)" : "";
                   return (
-                    <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#888888", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
+                    <div key={uKey} style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#888888", padding:"3px 0 3px 8px", borderBottom:"1px solid #2E2E2E" }}>
                       <span>{getSubLabel(uKey) || uKey}{suffix}</span>
                       <span style={{ fontWeight:500, color:"#AAAAAA" }}>{privacy?"●●●":fmt(v)}</span>
                     </div>
@@ -497,7 +497,7 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
                   const 급여Total = 급여Items.reduce((s,x) => s+x.v, 0);
 
                   const ROW = (label, v, color="#AAAAAA") => (
-                    <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13, padding:"5px 0", borderBottom:"1px solid #DDD8D3" }}>
+                    <div key={label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:13, padding:"5px 0", borderBottom:"1px solid #2E2E2E" }}>
                       <span style={{ color }}>{label}</span>
                       <span style={{ fontWeight:600, color:"#FF7E36" }}>{fmt(v)}</span>
                     </div>
@@ -582,11 +582,11 @@ function MonthlyTab({ monthly, active, raw, totalPhysicalByMonth, totalDebtByMon
             </div>
             {open==="networth" && (
               <div style={{ background:"#252525", borderRadius:12, padding:"12px 14px", marginTop:4 }}>
-                <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#AAAAAA", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#AAAAAA", padding:"4px 0", borderBottom:"1px solid #2E2E2E" }}>
                   <span>🏠 실물자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{fmtM(totalPhysical)}</span>
                 </div>
                 {totalFinancial > 0 && (
-                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#AAAAAA", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#AAAAAA", padding:"4px 0", borderBottom:"1px solid #2E2E2E" }}>
                     <span>📈 금융자산</span><span style={{ color:"#00C471", fontWeight:600 }}>{fmtM(totalFinancial)}</span>
                   </div>
                 )}
@@ -694,7 +694,7 @@ function YearTab({ monthly, active, raw, privacy }) {
               const groupTotal = items.reduce((s,x) => s+x.v, 0);
               if (items.length === 1) {
                 return (
-                  <div key={groupName} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"4px 0", borderBottom:"1px solid #DDD8D3" }}>
+                  <div key={groupName} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"4px 0", borderBottom:"1px solid #2E2E2E" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                       <span style={{ fontSize:13, color:"#FF7E36", fontWeight:700 }}>{groupName}</span>
                       <span style={{ fontSize:12, color:"#AAAAAA" }}>{items[0].label}</span>
@@ -710,7 +710,7 @@ function YearTab({ monthly, active, raw, privacy }) {
                     <span>{fmt(groupTotal)}</span>
                   </div>
                   {items.map(({label, v}) => (
-                    <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#888888", padding:"3px 0 3px 8px", borderBottom:"1px solid #DDD8D3" }}>
+                    <div key={label} style={{ display:"flex", justifyContent:"space-between", fontSize:13, color:"#888888", padding:"3px 0 3px 8px", borderBottom:"1px solid #2E2E2E" }}>
                       <span>{label}</span>
                       <span style={{ fontWeight:500, color:"#AAAAAA" }}>{fmt(v)}</span>
                     </div>
@@ -798,7 +798,7 @@ function YearTab({ monthly, active, raw, privacy }) {
                       {LINES.map(l=>(
                         <button key={l.key} onClick={()=>setActiveLine(l.key)} style={{
                           background: activeLine===l.key ? `${l.color}22` : "transparent",
-                          border: `1px solid ${activeLine===l.key ? l.color : "#C8C3BE"}`,
+                          border: `1px solid ${activeLine===l.key ? l.color : "#333333"}`,
                           borderRadius:8, color: activeLine===l.key ? l.color : "#777777",
                           fontSize:13, padding:"4px 14px", cursor:"pointer",
                           fontFamily:"inherit", fontWeight: activeLine===l.key ? 700 : 400,
@@ -948,7 +948,7 @@ function DebtTab({ monthly, active, raw }) {
               </LineChart>
             </ResponsiveContainer>
 
-            <div style={{ marginTop:12, borderTop:"1px solid #D8D3CE", paddingTop:10 }}>
+            <div style={{ marginTop:12, borderTop:"1px solid #2E2E2E", paddingTop:10 }}>
               <div style={{ fontSize:13, color:"#888888", fontWeight:700, marginBottom:8 }}>월별 증감 (↓ 감소 = 상환)</div>
               <ResponsiveContainer width="100%" height={80}>
                 <BarChart data={changeData} margin={{ top:4, right:4, left:4, bottom:0 }}>
